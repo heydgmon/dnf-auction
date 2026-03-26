@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #f6f6f9;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f2f2f7;
+  --border-color: #e2e2ea;
+  --border-accent: #ccccd8;
+  --text-primary: #18182a;
+  --text-secondary: #4a4a6a;
+  --text-muted: #8888a8;
+  --accent-gold: #b87d20;
+  --accent-gold-dim: #9a6818;
+  --accent-blue: #2060d0;
+  --accent-purple: #6030b0;
+  --accent-red: #c03040;
+  --accent-green: #18804a;
+  --accent-teal: #0e7070;
+  --rarity-common: #787878;
+  --rarity-uncommon: #2e8a28;
+  --rarity-rare: #2060d0;
+  --rarity-unique: #9930aa;
+  --rarity-epic: #b08800;
+  --rarity-chronicle: #c05800;
+  --rarity-legendary: #c03a00;
+  --rarity-mythic: #c00080;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+.animate-slide-down { animation: slideDown 0.2s ease-out forwards; }
+
+.skeleton {
+  background: linear-gradient(90deg, #eaeaf0 25%, #f2f2f7 50%, #eaeaf0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 0 3px rgba(32,96,208,0.1);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
