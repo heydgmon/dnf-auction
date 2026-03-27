@@ -1,8 +1,14 @@
 [
   {
     "itemName": "토큰",
-    "count": 3,
-    "lastPrice": 7000,
+    "count": 4,
+    "lastPrice": 5845,
+    "itemRarity": "언커먼"
+  },
+  {
+    "itemName": "무색 큐브 조각",
+    "count": 1,
+    "lastPrice": 42,
     "itemRarity": "언커먼"
   }
 ]
