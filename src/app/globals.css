@@ -3,30 +3,40 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #f6f6f9;
-  --bg-secondary: #ffffff;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f2f2f7;
-  --border-color: #e2e2ea;
-  --border-accent: #ccccd8;
-  --text-primary: #18182a;
-  --text-secondary: #4a4a6a;
-  --text-muted: #8888a8;
-  --accent-gold: #b87d20;
-  --accent-gold-dim: #9a6818;
-  --accent-blue: #2060d0;
-  --accent-purple: #6030b0;
-  --accent-red: #c03040;
-  --accent-green: #18804a;
-  --accent-teal: #0e7070;
-  --rarity-common: #787878;
-  --rarity-uncommon: #2e8a28;
-  --rarity-rare: #2060d0;
-  --rarity-unique: #9930aa;
-  --rarity-epic: #b08800;
-  --rarity-chronicle: #c05800;
-  --rarity-legendary: #c03a00;
-  --rarity-mythic: #c00080;
+  /* ── 밝은 톤 3색 기반 테마 ── */
+  /* 메인: #2563EB (블루), 서브: #F59E0B (앰버/골드), 배경: #F8FAFC (슬레이트) */
+  --bg-primary: #F1F5F9;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F8FAFC;
+  --border-color: #E2E8F0;
+  --border-accent: #CBD5E1;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+
+  /* 3색 팔레트 */
+  --color-primary: #2563EB;
+  --color-primary-light: #DBEAFE;
+  --color-primary-dim: #1D4ED8;
+  --color-accent: #F59E0B;
+  --color-accent-light: #FEF3C7;
+  --color-accent-dim: #D97706;
+  --color-surface: #F8FAFC;
+
+  /* 기능색 (최소한으로) */
+  --color-success: #10B981;
+  --color-danger: #EF4444;
+
+  /* 레어리티 (게임 고유 — 유지) */
+  --rarity-common: #6B7280;
+  --rarity-uncommon: #22C55E;
+  --rarity-rare: #3B82F6;
+  --rarity-unique: #A855F7;
+  --rarity-epic: #EAB308;
+  --rarity-chronicle: #F97316;
+  --rarity-legendary: #EF4444;
+  --rarity-mythic: #EC4899;
 }
 
 * { box-sizing: border-box; }
@@ -38,13 +48,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-secondary); }
-::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 3px; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+/* ── 애니메이션 ── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes shimmer {
@@ -52,27 +63,149 @@ body {
   100% { background-position: 200% 0; }
 }
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+.animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
 .animate-slide-down { animation: slideDown 0.2s ease-out forwards; }
+.animate-slide-up { animation: slideUp 0.35s ease-out forwards; }
 
 .skeleton {
-  background: linear-gradient(90deg, #eaeaf0 25%, #f2f2f7 50%, #eaeaf0 75%);
+  background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-  border-radius: 6px;
+  border-radius: 8px;
+}
+
+/* ── 입력 필드 ── */
+.input-base {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: all 0.2s;
 }
 
 input:focus, select:focus, textarea:focus {
   outline: none;
-  border-color: var(--accent-blue) !important;
-  box-shadow: 0 0 0 3px rgba(32,96,208,0.1);
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ── 카드 ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 20px;
+  transition: box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+/* ── 인기 아이템 카드 ── */
+.hot-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.hot-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
+}
+
+.hot-card .rank-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  border-radius: 0 0 8px 0;
+}
+
+.hot-card .rank-badge.top1 { background: var(--color-accent); }
+.hot-card .rank-badge.top2 { background: var(--color-primary); }
+.hot-card .rank-badge.top3 { background: #64748B; }
+.hot-card .rank-badge.topn { background: #CBD5E1; color: #475569; }
+
+/* ── 자동완성 드롭다운 ── */
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 13px;
+}
+
+.autocomplete-item:hover {
+  background: var(--color-primary-light);
+}
+
+/* ── 탭 네비게이션 ── */
+.nav-tab {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.nav-tab.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.nav-tab:not(.active) {
+  color: var(--text-secondary);
+}
+
+.nav-tab:not(.active):hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }

@@ -1,8 +1,8 @@
 [
   {
     "itemName": "토큰",
-    "count": 4,
-    "lastPrice": 5845,
+    "count": 15,
+    "lastPrice": 6000,
     "itemRarity": "언커먼"
   },
   {
@@ -10,5 +10,29 @@
     "count": 1,
     "lastPrice": 42,
     "itemRarity": "언커먼"
+  },
+  {
+    "itemName": "PC방 토큰 교환권",
+    "count": 1,
+    "lastPrice": 6000,
+    "itemRarity": "언커먼"
+  },
+  {
+    "itemName": "큐브",
+    "count": 3,
+    "lastPrice": 28,
+    "itemRarity": "언커먼"
+  },
+  {
+    "itemName": "정수",
+    "count": 2,
+    "lastPrice": 40386,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "서핑",
+    "count": 1,
+    "lastPrice": 2999999,
+    "itemRarity": "커먼"
   }
 ]
