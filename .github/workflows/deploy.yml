@@ -35,7 +35,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t $ECR_REPOSITORY:latest .
+          docker build --no-cache -t $ECR_REPOSITORY:latest .
 
       - name: Tag Docker image
         run: |
