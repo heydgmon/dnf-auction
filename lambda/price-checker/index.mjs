@@ -132,14 +132,15 @@ export const handler = async (event) => {
             const result = await emailRes.json();
             console.log(`Email sent: ${result.id}`);
 
-            // lastNotified 갱신
+            // 수정 (1회 발송 후 종료)
             await docClient.send(
               new UpdateCommand({
                 TableName: TABLE_NAME,
                 Key: { alertId: alert.alertId },
-                UpdateExpression: "SET lastNotified = :now",
+                UpdateExpression: "SET lastNotified = :now, isActive = :inactive",
                 ExpressionAttributeValues: {
                   ":now": new Date().toISOString(),
+                  ":inactive": false,
                 },
               })
             );

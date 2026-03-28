@@ -34,6 +34,21 @@ function extractRows(json: any): any[] {
   return [];
 }
 
+/* ─── 가격 입력 포맷 유틸 ─── */
+const MAX_ALERT_PRICE = 999_999_999_999; // 최대 약 1조
+
+function formatPriceInput(value: string): string {
+  const digits = value.replace(/[^0-9]/g, "");
+  if (!digits) return "";
+  const num = Number(digits);
+  if (num > MAX_ALERT_PRICE) return MAX_ALERT_PRICE.toLocaleString();
+  return num.toLocaleString();
+}
+
+function parsePriceInput(formatted: string): string {
+  return formatted.replace(/[^0-9]/g, "");
+}
+
 /* ─── 검색어 필터 유틸 (버그 수정 핵심) ─── */
 function filterByItemName<T extends { itemName?: string }>(rows: T[], query: string): T[] {
   const q = query.trim();
@@ -350,13 +365,33 @@ function AlertPanel() {
           <input type="email" value={alertEmail} onChange={e => setAlertEmail(e.target.value)} placeholder="이메일 주소" className="input-base" style={{ marginBottom: 12 }} />
           <AutocompleteSearch query={alertItem} setQuery={setAlertItem} onSearch={() => {}} loading={false} placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)" buttonLabel="" />
         </div>
-        <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
           <select value={alertCondition} onChange={e => setAlertCondition(e.target.value as any)} className="input-base" style={{ width: "auto" }}>
             <option value="below">이하로 떨어지면</option><option value="above">이상으로 오르면</option>
           </select>
-          <input type="number" value={alertPrice} onChange={e => setAlertPrice(e.target.value)} placeholder="목표 가격 (골드)" className="input-base" style={{ flex: 1 }} />
+          <div style={{ flex: 1, position: "relative" }}>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={alertPrice ? formatPriceInput(alertPrice) : ""}
+              onChange={e => {
+                const raw = parsePriceInput(e.target.value);
+                if (raw === "" || Number(raw) <= MAX_ALERT_PRICE) {
+                  setAlertPrice(raw);
+                }
+              }}
+              placeholder="목표 가격"
+              className="input-base"
+              style={{ paddingRight: 36 }}
+            />
+            <span style={{
+              position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+              fontSize: 12, color: "var(--text-muted)", pointerEvents: "none",
+            }}>원</span>
+          </div>
           <Btn onClick={register} loading={alertLoading} disabled={false} label="알림 등록" />
         </div>
+        <p style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 12 }}>최대 {MAX_ALERT_PRICE.toLocaleString()}골드까지 입력할 수 있습니다</p>
         {alertMsg && <div style={{ padding: "10px 14px", borderRadius: 8, fontSize: 13, background: "#F0FDF4", color: "var(--color-success)", border: "1px solid #BBF7D0" }}>{alertMsg}</div>}
         {alertError && <div style={{ padding: "10px 14px", borderRadius: 8, fontSize: 13, background: "#FEF2F2", color: "var(--color-danger)", border: "1px solid #FECACA" }}>{alertError}</div>}
       </Card>
