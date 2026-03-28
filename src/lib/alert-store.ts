@@ -32,13 +32,11 @@ export async function saveAlerts(alerts: AlertRule[]): Promise<void> {
 export async function addAlert(rule: AlertRule): Promise<{ success: boolean; message: string }> {
   const alerts = await getAlerts();
 
-  // 이메일당 최대 3개 제한
   const emailCount = alerts.filter((a) => a.email === rule.email && !a.fulfilled).length;
   if (emailCount >= 3) {
     return { success: false, message: "이메일당 최대 3개의 알림만 등록할 수 있습니다." };
   }
 
-  // 중복 등록 방지
   const duplicate = alerts.find(
     (a) =>
       a.email === rule.email &&
@@ -81,7 +79,7 @@ export async function deleteAlert(id: string, email: string): Promise<boolean> {
   return false;
 }
 
-/* ─── Popular Items (조회수 트래킹) ─── */
+/* ─── Popular Items (전체 유저 검색 수 트래킹) ─── */
 
 interface PopularEntry {
   itemName: string;
@@ -90,6 +88,9 @@ interface PopularEntry {
   itemRarity?: string;
 }
 
+/**
+ * 인기 아이템 조회 — 전체 유저의 검색 수(count) 내림차순
+ */
 export async function getPopularItems(): Promise<PopularEntry[]> {
   await ensureDataDir();
   try {
@@ -101,6 +102,10 @@ export async function getPopularItems(): Promise<PopularEntry[]> {
   }
 }
 
+/**
+ * 검색 트래킹 — 모든 유저의 검색을 누적 카운트
+ * /api/auction route에서 검색 성공 시 호출됨
+ */
 export async function trackSearch(
   itemName: string,
   lastPrice?: number,
