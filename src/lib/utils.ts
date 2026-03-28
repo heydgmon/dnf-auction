@@ -27,8 +27,6 @@ export function getRarityBg(rarity: string): string {
 }
 
 export function formatGold(num: number): string {
-  if (num >= 100000000) return `${(num / 100000000).toFixed(1)}억`;
-  if (num >= 10000) return `${(num / 10000).toFixed(0)}만`;
   return num.toLocaleString();
 }
 

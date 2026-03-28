@@ -1,26 +1,26 @@
 [
   {
     "itemName": "토큰",
-    "count": 39,
-    "lastPrice": 5664,
+    "count": 43,
+    "lastPrice": 5600,
     "itemRarity": "언커먼"
   },
   {
     "itemName": "무색 큐브 조각",
-    "count": 2,
-    "lastPrice": 16,
+    "count": 11,
+    "lastPrice": 40,
     "itemRarity": "언커먼"
   },
   {
     "itemName": "PC방 토큰 교환권",
-    "count": 8,
-    "lastPrice": 5697,
+    "count": 13,
+    "lastPrice": 5600,
     "itemRarity": "언커먼"
   },
   {
     "itemName": "큐브",
-    "count": 9,
-    "lastPrice": 28,
+    "count": 11,
+    "lastPrice": 25,
     "itemRarity": "언커먼"
   },
   {
@@ -31,21 +31,21 @@
   },
   {
     "itemName": "서핑",
-    "count": 3,
-    "lastPrice": 2999999,
+    "count": 5,
+    "lastPrice": 1999999,
     "itemRarity": "커먼"
   },
   {
     "itemName": "흑색 큐브 조각",
-    "count": 1,
-    "lastPrice": 16,
+    "count": 2,
+    "lastPrice": 27,
     "itemRarity": "언커먼"
   },
   {
     "itemName": "적아 울라드 카드",
-    "count": 3,
-    "lastPrice": 3400000,
-    "itemRarity": "유니크"
+    "count": 45,
+    "lastPrice": 1300000,
+    "itemRarity": "레전더리"
   },
   {
     "itemName": "에픽 소울 결정",
@@ -55,25 +55,25 @@
   },
   {
     "itemName": "적색 큐브 조각",
-    "count": 3,
-    "lastPrice": 16,
+    "count": 4,
+    "lastPrice": 45,
     "itemRarity": "언커먼"
   },
   {
     "itemName": "광휘",
-    "count": 6,
+    "count": 7,
     "lastPrice": 301,
     "itemRarity": "레어"
   },
   {
     "itemName": "광휘의 소울 결정",
-    "count": 4,
+    "count": 5,
     "lastPrice": 726,
     "itemRarity": "언커먼"
   },
   {
     "itemName": "광휘의 소울",
-    "count": 2,
+    "count": 3,
     "lastPrice": 301,
     "itemRarity": "레어"
   },
@@ -85,7 +85,7 @@
   },
   {
     "itemName": "강화권",
-    "count": 11,
+    "count": 15,
     "lastPrice": 64990000,
     "itemRarity": "유니크"
   },
@@ -109,8 +109,8 @@
   },
   {
     "itemName": "무새",
-    "count": 1,
-    "lastPrice": 5000000,
+    "count": 2,
+    "lastPrice": 721000,
     "itemRarity": "커먼"
   },
   {
@@ -133,14 +133,14 @@
   },
   {
     "itemName": "골고",
-    "count": 7,
-    "lastPrice": 150626,
+    "count": 9,
+    "lastPrice": 70000,
     "itemRarity": "유니크"
   },
   {
     "itemName": "골고라",
-    "count": 4,
-    "lastPrice": 4888888,
+    "count": 6,
+    "lastPrice": 39399999,
     "itemRarity": "유니크"
   },
   {
@@ -157,14 +157,14 @@
   },
   {
     "itemName": "리노",
-    "count": 2,
+    "count": 6,
     "lastPrice": 27500000,
     "itemRarity": "유니크"
   },
   {
     "itemName": "골고라이언",
-    "count": 6,
-    "lastPrice": 56300000,
+    "count": 9,
+    "lastPrice": 39399999,
     "itemRarity": "유니크"
   },
   {
@@ -181,13 +181,13 @@
   },
   {
     "itemName": "골고라이",
-    "count": 1,
-    "lastPrice": 4888888,
+    "count": 3,
+    "lastPrice": 111111111,
     "itemRarity": "유니크"
   },
   {
     "itemName": "칼레이",
-    "count": 1,
+    "count": 2,
     "lastPrice": 1234567,
     "itemRarity": "레어"
   },
@@ -211,7 +211,7 @@
   },
   {
     "itemName": "광휘의 소",
-    "count": 2,
+    "count": 3,
     "lastPrice": 301,
     "itemRarity": "레어"
   },
@@ -241,8 +241,188 @@
   },
   {
     "itemName": "패키지",
-    "count": 2,
-    "lastPrice": 38500000,
+    "count": 6,
+    "lastPrice": 10450000,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "태초",
+    "count": 5,
+    "lastPrice": 15000,
+    "itemRarity": "커먼"
+  },
+  {
+    "itemName": "태초 소울 결정",
+    "count": 7,
+    "lastPrice": 726,
+    "itemRarity": "언커먼"
+  },
+  {
+    "itemName": "태초 소울 결",
+    "count": 1,
+    "lastPrice": 4000000,
     "itemRarity": "레어"
+  },
+  {
+    "itemName": "태초 소",
+    "count": 3,
+    "lastPrice": 15000,
+    "itemRarity": "커먼"
+  },
+  {
+    "itemName": "+5 장비 증폭권[골고라이언]",
+    "count": 2,
+    "lastPrice": 39399999,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "클론 레",
+    "count": 1,
+    "lastPrice": 2330000,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "클론",
+    "count": 2,
+    "lastPrice": 2330000,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "레어",
+    "count": 1,
+    "lastPrice": 2330000,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "무색 큐",
+    "count": 1,
+    "lastPrice": 42,
+    "itemRarity": "언커먼"
+  },
+  {
+    "itemName": "적아 울",
+    "count": 28,
+    "lastPrice": 1300000,
+    "itemRarity": "레전더리"
+  },
+  {
+    "itemName": "적아 울라드",
+    "count": 25,
+    "lastPrice": 1300000,
+    "itemRarity": "레전더리"
+  },
+  {
+    "itemName": "적아",
+    "count": 26,
+    "lastPrice": 1300000,
+    "itemRarity": "레전더리"
+  },
+  {
+    "itemName": "카드",
+    "count": 2,
+    "lastPrice": 1525000,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "결정",
+    "count": 1,
+    "lastPrice": 726,
+    "itemRarity": "언커먼"
+  },
+  {
+    "itemName": "닳아버린",
+    "count": 6,
+    "lastPrice": 263043,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "닳아버린 순례의 증표",
+    "count": 37,
+    "lastPrice": 263043,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "닳아",
+    "count": 1,
+    "lastPrice": 290000,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "적아 울라드 카",
+    "count": 1,
+    "lastPrice": 1300000,
+    "itemRarity": "레전더리"
+  },
+  {
+    "itemName": "서핑 아라드 패키지",
+    "count": 1,
+    "lastPrice": 5400000,
+    "itemRarity": "커먼"
+  },
+  {
+    "itemName": "광휘의",
+    "count": 1,
+    "lastPrice": 301,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "잃어버린",
+    "count": 2,
+    "lastPrice": 30000000,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "잃어버린 순",
+    "count": 1,
+    "lastPrice": 30000000,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "잃어버린 순례의 증표",
+    "count": 1,
+    "lastPrice": 280000,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "+10 장비 증폭권[골고라이언]",
+    "count": 8,
+    "lastPrice": 54780000,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "황금 큐",
+    "count": 1,
+    "lastPrice": 94,
+    "itemRarity": "언커먼"
+  },
+  {
+    "itemName": "황금 큐브 조각",
+    "count": 1,
+    "lastPrice": 650,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "운명의 아르카나 패키지",
+    "count": 1,
+    "lastPrice": 37219000,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "강화의 비밀",
+    "count": 2,
+    "lastPrice": 8998,
+    "itemRarity": "언커먼"
+  },
+  {
+    "itemName": "대박기원",
+    "count": 1,
+    "lastPrice": 5000000,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "+ 장비 증폭권[골고라이언]",
+    "count": 1,
+    "lastPrice": 22000,
+    "itemRarity": "유니크"
   }
 ]

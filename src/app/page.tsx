@@ -10,7 +10,7 @@ import {
 } from "@/lib/types";
 import { getRarityColor, getRarityBg, formatGold, formatFullGold, validateEmail, formatDate } from "@/lib/utils";
 
-type Page = "alerts" | "auction" | "auction-sold" |  "items" | "setitems";
+type Page = "alerts" | "auction" | "auction-sold" | "items" | "setitems";
 
 const NAV_ITEMS: { id: Page; label: string }[] = [
   { id: "alerts", label: "알림" },
@@ -31,6 +31,31 @@ function extractRows(json: any): any[] {
     for (const k of Object.keys(json)) { if (Array.isArray(json[k])) return json[k]; }
   }
   return [];
+}
+
+/* ─── 검색어 필터 유틸 (버그 수정 핵심) ─── */
+function filterByItemName<T extends { itemName?: string }>(rows: T[], query: string): T[] {
+  const q = query.trim();
+  if (!q) return rows;
+  const qLower = q.toLowerCase();
+  const qWords = qLower.split(/\s+/).filter(Boolean);
+
+  // 1순위: 아이템 이름이 검색어와 정확히 일치
+  const exact = rows.filter(r => r.itemName === q);
+  if (exact.length > 0) return exact;
+
+  // 2순위: 아이템 이름에 검색어 전체가 포함
+  const contains = rows.filter(r => r.itemName && r.itemName.toLowerCase().includes(qLower));
+  if (contains.length > 0) return contains;
+
+  // 3순위: 검색어의 모든 단어가 아이템 이름에 포함 (순서 무관)
+  const allWordsMatch = rows.filter(r => {
+    if (!r.itemName) return false;
+    const name = r.itemName.toLowerCase();
+    return qWords.every(w => name.includes(w));
+  });
+  return allWordsMatch;
+  // 매칭 없으면 빈 배열 → "검색 결과가 없습니다" 표시
 }
 
 /* ─── 최근 검색 (클라이언트 메모리, 세션 단위) ─── */
@@ -192,25 +217,20 @@ function AutocompleteSearch({ query, setQuery, onSearch, loading, placeholder, b
     const ctrl = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        // limit=400 (API 최대) → 검색어 포함 아이템을 최대한 많이 수집
-        const res = await fetch(`/api/auction?itemName=${encodeURIComponent(t)}&wordType=full&limit=400`, { signal: ctrl.signal });
+        const res = await fetch(`/api/auction?itemName=${encodeURIComponent(t)}&wordType=full&limit=400&sort[unitPrice]=asc`, { signal: ctrl.signal });
         if (!res.ok) { setSuggestions([]); setShowDrop(false); return; }
         const rows = extractRows(await res.json());
 
-        // 검색어가 아이템 이름에 포함된 것만 필터 (엉뚱한 아이템 제거)
-        const q = t.toLowerCase();
-        const matched = rows.filter((r: any) => r.itemName && r.itemName.toLowerCase().includes(q));
+        // ★ 수정: filterByItemName 유틸 사용하여 관련 없는 아이템 제거
+        const matched = filterByItemName(rows, t);
 
-        // 아이템 이름 기준 중복 제거 (강화 수치 무관하게 이름만)
-        // → 자동완성은 "어떤 아이템이 있는지" 보여주는 역할
-        // → 강화/제련 수치는 검색 결과에서 확인
+        // 아이템 이름 기준 중복 제거
         const nameMap = new Map<string, any>();
         for (const r of matched) {
           const n = r.itemName || "";
           if (n && !nameMap.has(n)) {
             nameMap.set(n, r);
           } else if (n && nameMap.has(n)) {
-            // 같은 이름이면 최저가로 업데이트
             const existing = nameMap.get(n)!;
             if ((r.unitPrice || Infinity) < (existing.unitPrice || Infinity)) {
               nameMap.set(n, r);
@@ -320,7 +340,7 @@ function AlertPanel() {
         <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>목표 가격에 도달하면 이메일로 알려드립니다 · 1회 발송 후 자동 종료</p>
         <div style={{ marginBottom: 12 }}>
           <input type="email" value={alertEmail} onChange={e => setAlertEmail(e.target.value)} placeholder="이메일 주소" className="input-base" style={{ marginBottom: 12 }} />
-          <AutocompleteSearch query={alertItem} setQuery={setAlertItem} onSearch={() => {}} loading={false} placeholder="아이템 이름 (예: 강화권, 큐브, 토큰...)" buttonLabel="" />
+          <AutocompleteSearch query={alertItem} setQuery={setAlertItem} onSearch={() => {}} loading={false} placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)" buttonLabel="" />
         </div>
         <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
           <select value={alertCondition} onChange={e => setAlertCondition(e.target.value as any)} className="input-base" style={{ width: "auto" }}>
@@ -377,24 +397,15 @@ function AuctionSearchPanel() {
     if (!query.trim()) return; setLoading(true); setError(""); setSearched(true);
     addRecent(query.trim());
     try {
-      const res = await fetch(`/api/auction?itemName=${encodeURIComponent(query.trim())}&wordType=full&limit=400`);
+      // wordType=match → 정확히 일치하는 아이템만 반환 (최저가 누락 방지)
+      // wordType=full은 자동완성에서만 사용
+      const res = await fetch(`/api/auction?itemName=${encodeURIComponent(query.trim())}&wordType=match&limit=400`);
       const data: AuctionSearchResponse = await res.json();
       if (!res.ok || data.error) { setError(data.error?.message || `오류`); setResults([]); }
       else {
-        const q = query.trim();
         const allRows = [...(data.rows || [])];
-        // 1순위: 아이템 이름이 검색어와 정확히 일치
-        const exact = allRows.filter(r => r.itemName === q);
-        if (exact.length > 0) {
-          exact.sort((a, b) => a.unitPrice - b.unitPrice);
-          setResults(exact);
-        } else {
-          // 2순위: 아이템 이름에 검색어가 포함된 것만 (API가 단어 단위로 매칭하므로 관련 없는 결과 제거)
-          const contains = allRows.filter(r => r.itemName && r.itemName.includes(q));
-          const filtered = contains.length > 0 ? contains : allRows;
-          filtered.sort((a, b) => a.unitPrice - b.unitPrice);
-          setResults(filtered);
-        }
+        allRows.sort((a, b) => a.unitPrice - b.unitPrice);
+        setResults(allRows);
       }
     } catch { setError("서버 연결에 실패했습니다."); setResults([]); } finally { setLoading(false); }
   }, [query]);
@@ -403,7 +414,7 @@ function AuctionSearchPanel() {
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Card>
         <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>현재 경매장 등록 아이템을 검색합니다. 개당 가격 낮은 순으로 정렬됩니다.</p>
-        <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 토큰, 큐브, 강화권...)" />
+        <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)" />
       </Card>
       {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
       <ErrorMsg msg={error} />
@@ -411,6 +422,11 @@ function AuctionSearchPanel() {
       {!loading && results.length > 0 && (
         <div>
           <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{results.length}건 · 개당 가격 낮은 순</p>
+          {results.length >= 395 && (
+            <div style={{ padding: "8px 12px", borderRadius: 8, marginBottom: 8, fontSize: 11, background: "var(--color-accent-light)", color: "var(--color-accent)", border: "1px solid var(--color-accent)" }}>
+              ⚠ 등록 매물이 많아 일부만 표시됩니다. 정확한 최저가는 게임 내 경매장 또는 시세 탭을 확인해주세요.
+            </div>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{results.map((item, i) => <AuctionRow key={`${item.auctionNo}-${i}`} item={item} />)}</div>
         </div>
       )}
@@ -421,6 +437,8 @@ function AuctionSearchPanel() {
 
 function AuctionRow({ item }: { item: AuctionItem }) {
   const [open, setOpen] = useState(false);
+  const upgrade = (item as any).upgrade;
+  const upgradeMax = (item as any).upgradeMax;
   return (
     <div className="card" style={{ padding: "12px 16px", cursor: "pointer", borderColor: open ? "var(--color-primary)" : undefined, transition: "border-color 0.15s" }} onClick={() => setOpen(!open)}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -429,6 +447,7 @@ function AuctionRow({ item }: { item: AuctionItem }) {
           <div style={{ fontSize: 13, fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {item.reinforce > 0 && <span style={{ color: "var(--color-accent-dim)" }}>+{item.reinforce} </span>}{item.itemName}
             {item.refine > 0 && <span style={{ marginLeft: 4, fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "var(--color-primary-light)", color: "var(--color-primary)" }}>제련 {item.refine}</span>}
+            {upgrade != null && upgradeMax != null && upgradeMax > 0 && <span style={{ marginLeft: 4, fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "var(--color-accent-light)", color: "var(--color-accent)" }}>{upgrade}성/{upgradeMax}성</span>}
           </div>
           <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2, display: "flex", gap: 8 }}>
             <span>Lv.{item.itemAvailableLevel}</span><span style={{ color: getRarityColor(item.itemRarity) }}>{item.itemRarity}</span><span>{item.itemType}</span>{item.count > 1 && <span>x{item.count}</span>}
@@ -446,6 +465,7 @@ function AuctionRow({ item }: { item: AuctionItem }) {
           <InfoCell label="등록일" value={formatDate(item.regDate)} />
           <InfoCell label="만료일" value={formatDate(item.expireDate)} />
           {item.amplificationName && <InfoCell label="증폭" value={item.amplificationName} />}
+          {upgrade != null && <InfoCell label="업그레이드" value={`${upgrade} / ${upgradeMax}`} />}
         </div>
       )}
     </div>
@@ -466,18 +486,11 @@ function AuctionSoldPanel() {
       const data: AuctionSoldResponse = await res.json();
       if (!res.ok || data.error) { setError(data.error?.message || "오류"); setResults([]); }
       else {
-        const q = query.trim();
         const allRows = [...(data.rows || [])];
-        const exact = allRows.filter(r => r.itemName === q);
-        if (exact.length > 0) {
-          exact.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
-          setResults(exact);
-        } else {
-          const contains = allRows.filter(r => r.itemName && r.itemName.includes(q));
-          const filtered = contains.length > 0 ? contains : allRows;
-          filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
-          setResults(filtered);
-        }
+        // ★ 수정: filterByItemName 유틸 사용 (allRows fallback 제거)
+        const filtered = filterByItemName(allRows, query.trim());
+        filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
+        setResults(filtered);
       }
     } catch { setError("서버 연결에 실패했습니다."); setResults([]); } finally { setLoading(false); }
   }, [query]);
@@ -485,7 +498,7 @@ function AuctionSoldPanel() {
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>최근 거래 완료된 아이템의 실제 거래 가격을 확인합니다.</p>
-        <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 토큰, 강화권...)" buttonLabel="시세 검색" /></Card>
+        <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)" buttonLabel="시세 검색" /></Card>
       {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
       <ErrorMsg msg={error} />
       {loading && <SkeletonList count={5} />}
@@ -505,77 +518,6 @@ function AuctionSoldPanel() {
           </div>
         </div>)}
       {!loading && searched && !results.length && !error && <Empty msg="거래 내역이 없습니다." />}
-    </div>
-  );
-}
-
-/* ═══ 아바타 마켓 ═══ */
-function AvatarMarketPanel() {
-  const [query, setQuery] = useState(""); const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [searched, setSearched] = useState(false);
-  const [popular, setPopular] = useState<PopularItem[]>([]);
-  useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []);
-
-  const search = useCallback(async () => {
-    if (!query.trim()) return; setLoading(true); setError(""); setSearched(true); addRecent(query.trim());
-    try {
-      // Neople API /df/avatar-market/sale: title 파라미터가 동작하지 않으므로
-      // limit=100으로 전체 목록을 가져온 뒤 프론트에서 필터링
-      const res = await fetch(`/api/avatar-market?limit=100`);
-      const data = await res.json();
-
-      if (!res.ok || data.error) {
-        setError(data.error?.message || `오류 (${res.status})`);
-        setResults([]);
-      } else {
-        const allRows = extractRows(data);
-        const q = query.trim().toLowerCase();
-        // 제목 또는 해시태그에 검색어가 포함된 상품 필터링
-        const filtered = allRows.filter((item: any) => {
-          const titleMatch = item.title && item.title.toLowerCase().includes(q);
-          const hashMatch = item.hashtag && item.hashtag.some((h: string) => h.toLowerCase().includes(q));
-          return titleMatch || hashMatch;
-        });
-        setResults(filtered);
-      }
-    } catch { setError("서버 연결에 실패했습니다."); setResults([]); } finally { setLoading(false); }
-  }, [query]);
-
-  return (
-    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Card>
-        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>아바타 마켓에 등록된 상품을 검색합니다. 현재 판매 중인 아바타 상품의 제목으로 검색하세요.</p>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input type="text" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") search(); }}
-            placeholder="아바타 상품 제목 검색 (예: 무기 아바타, 레어, 칭호...)" className="input-base" style={{ flex: 1 }} />
-          <Btn onClick={search} loading={loading} disabled={!query.trim()} label="마켓 검색" />
-        </div>
-      </Card>
-      {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
-      <ErrorMsg msg={error} />
-      {loading && <SkeletonList count={5} />}
-      {!loading && results.length > 0 && (
-        <div>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{results.length}건</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {results.map((item: any, i: number) => (
-              <div key={i} className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</div>
-                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>{item.sellerName}{item.count > 1 ? ` · x${item.count}` : ""} · {formatDate(item.regDate)}</div>
-                </div>
-                {item.hashtag && item.hashtag.length > 0 && (
-                  <div className="hidden sm:flex" style={{ gap: 4, flexShrink: 0 }}>
-                    {item.hashtag.slice(0, 2).map((tag: string) => (
-                      <span key={tag} style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "var(--color-primary-light)", color: "var(--color-primary)" }}>#{tag}</span>
-                    ))}
-                  </div>
-                )}
-                <span style={{ fontWeight: 600, color: "var(--color-accent-dim)", flexShrink: 0 }}>{formatGold(item.price)}</span>
-              </div>))}
-          </div>
-        </div>)}
-      {!loading && searched && !results.length && !error && <Empty msg="검색 결과가 없습니다. 현재 판매 등록된 아바타 상품의 제목으로 검색해보세요." />}
     </div>
   );
 }
@@ -604,9 +546,8 @@ function ItemSearchPanel() {
 
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Card>// 변경 후
-            <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>던파 전체 아이템의 상세 정보를 검색합니다. 아이템 설명, 레벨, 등급, 세트 구성 등을 확인할 수 있습니다. 경매장에 등록되지 않은 아이템도 조회 가능합니다.</p>
-        <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 무한의정수)" buttonLabel="아이템 검색" /></Card>
+      <Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>던파 전체 아이템의 상세 스펙을 조회합니다. 아이템 이름을 검색하면 레벨·등급·효과 설명·세트 정보 등을 확인할 수 있습니다.</p>
+        <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 닳아버린 순례의 증표, 광휘의 소울...)" buttonLabel="아이템 검색" /></Card>
       {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
       <ErrorMsg msg={error} />
       {loading && <SkeletonList count={5} />}
@@ -660,8 +601,8 @@ function SetItemPanel() {
 
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>세트 아이템을 이름으로 검색합니다. 세트 효과를 구성하는 장비 조합을 확인하고, 어떤 아이템들이 하나의 세트에 속하는지 찾아볼 수 있습니다.</p>
-        <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="세트 아이템 이름" buttonLabel="세트 검색" /></Card>
+      <Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>세트 아이템 구성을 검색합니다. 세트 이름을 입력하면 해당 세트에 포함된 장비 목록과 세트 ID를 확인할 수 있습니다.</p>
+        <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="세트 이름 검색 (예: 패키지)" buttonLabel="세트 검색" /></Card>
       {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
       <ErrorMsg msg={error} />
       {loading && <SkeletonList count={5} />}
