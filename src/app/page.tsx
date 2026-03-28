@@ -10,13 +10,14 @@ import {
 } from "@/lib/types";
 import { getRarityColor, getRarityBg, formatGold, formatFullGold, validateEmail, formatDate } from "@/lib/utils";
 
-type Page = "home" | "alerts" | "auction" | "auction-sold" | "items" | "setitems";
+type Page = "home" | "alerts" | "auction" | "auction-sold" | "insight" | "items" | "setitems";
 
 const NAV_ITEMS: { id: Page; label: string }[] = [
   { id: "home", label: "메인" },
   { id: "alerts", label: "알림" },
   { id: "auction", label: "경매장" },
   { id: "auction-sold", label: "시세" },
+  { id: "insight", label: "인사이트" },
   { id: "items", label: "아이템 DB" },
   { id: "setitems", label: "세트 아이템" },
 ];
@@ -134,6 +135,7 @@ export default function Home() {
         {page === "alerts" && <AlertPanel />}
         {page === "auction" && <AuctionSearchPanel />}
         {page === "auction-sold" && <AuctionSoldPanel />}
+        {page === "insight" && <InsightPanel />}
         {page === "items" && <ItemSearchPanel />}
         {page === "setitems" && <SetItemPanel />}
       </main>
@@ -759,6 +761,232 @@ function HomePanel({ onNavigate }: { onNavigate: (p: Page) => void }) {
 
         {!loading && items.length === 0 && <Empty msg="데이터를 불러오는 중입니다." />}
       </section>
+    </div>
+  );
+}
+
+/* ═══ 인사이트 ═══ */
+interface InsightItem {
+  itemName: string;
+  itemId: string;
+  itemRarity: string;
+  trades: { date: string; unitPrice: number; count: number }[];
+  avgPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  totalVolume: number;
+  totalValue: number;
+  priceChange: number;
+}
+
+function MiniChart({ trades, color, height = 48 }: { trades: { date: string; unitPrice: number }[]; color: string; height?: number }) {
+  if (trades.length < 2) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "var(--text-muted)" }}>데이터 부족</div>;
+  const prices = trades.map(t => t.unitPrice);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+  const w = 200;
+  const pad = 2;
+  const points = trades.map((t, i) => {
+    const x = pad + (i / (trades.length - 1)) * (w - pad * 2);
+    const y = pad + (1 - (t.unitPrice - min) / range) * (height - pad * 2);
+    return `${x},${y}`;
+  }).join(" ");
+  return (
+    <svg viewBox={`0 0 ${w} ${height}`} style={{ width: "100%", height }} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={`g-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.15" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={`${pad},${height - pad} ${points} ${w - pad},${height - pad}`} fill={`url(#g-${color.replace("#", "")})`} />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function InsightPanel() {
+  const [data, setData] = useState<InsightItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<InsightItem | null>(null);
+  const [tab, setTab] = useState<"volume" | "change">("volume");
+
+  useEffect(() => {
+    fetch("/api/market-insight")
+      .then(r => r.json())
+      .then(d => setData(d.items || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const sortedByVolume = [...data].sort((a, b) => b.totalValue - a.totalValue);
+  const sortedByChange = [...data].sort((a, b) => Math.abs(b.priceChange) - Math.abs(a.priceChange));
+  const maxValue = sortedByVolume[0]?.totalValue || 1;
+
+  return (
+    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* 헤더 */}
+      <div style={{ textAlign: "center", padding: "16px 0 0" }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>📊 경매장 인사이트</h2>
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>주요 아이템의 거래 규모, 시세 추이, 가격 변동률을 한눈에 확인합니다</p>
+      </div>
+
+      {loading && <SkeletonList count={6} />}
+
+      {!loading && data.length > 0 && (
+        <>
+          {/* ── 거래 규모 / 변동률 전환 탭 ── */}
+          <Card>
+            <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+              <button onClick={() => setTab("volume")} style={{ flex: 1, padding: "8px 0", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: tab === "volume" ? "var(--color-primary)" : "var(--bg-primary)", color: tab === "volume" ? "#fff" : "var(--text-muted)" }}>
+                💰 거래 규모
+              </button>
+              <button onClick={() => setTab("change")} style={{ flex: 1, padding: "8px 0", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: tab === "change" ? "var(--color-primary)" : "var(--bg-primary)", color: tab === "change" ? "#fff" : "var(--text-muted)" }}>
+                📈 가격 변동률
+              </button>
+            </div>
+
+            {tab === "volume" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>최근 거래 총액 기준 아이템 규모 비교</p>
+                {sortedByVolume.map((item, i) => {
+                  const pct = (item.totalValue / maxValue) * 100;
+                  return (
+                    <div key={item.itemName} style={{ cursor: "pointer" }} onClick={() => setSelectedItem(selectedItem?.itemName === item.itemName ? null : item)}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                        <div style={{ width: 20, fontSize: 11, fontWeight: 800, color: i < 3 ? "var(--color-primary)" : "var(--text-muted)", textAlign: "center" }}>{i + 1}</div>
+                        <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={24} />
+                        <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", flexShrink: 0 }}>{formatGold(item.totalValue)}</span>
+                      </div>
+                      <div style={{ marginLeft: 30, height: 6, borderRadius: 3, background: "var(--bg-primary)", overflow: "hidden" }}>
+                        <div style={{ width: `${pct}%`, height: "100%", borderRadius: 3, background: i === 0 ? "var(--color-primary)" : i === 1 ? "#3B82F6" : i === 2 ? "#60A5FA" : "#94A3B8", transition: "width 0.6s ease" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {tab === "change" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>최근 거래 기준 가격 변동률 (최근 vs 이전 평균 비교)</p>
+                {sortedByChange.map((item) => {
+                  const isUp = item.priceChange > 0;
+                  const isFlat = item.priceChange === 0;
+                  const changeColor = isFlat ? "var(--text-muted)" : isUp ? "#DC2626" : "#2563EB";
+                  const arrow = isFlat ? "―" : isUp ? "▲" : "▼";
+                  return (
+                    <div key={item.itemName} className="card" style={{ padding: "10px 14px", cursor: "pointer", borderColor: selectedItem?.itemName === item.itemName ? "var(--color-primary)" : undefined }} onClick={() => setSelectedItem(selectedItem?.itemName === item.itemName ? null : item)}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div>
+                          <div style={{ fontSize: 10, color: "var(--text-muted)" }}>평균 {formatGold(item.avgPrice)} · {item.totalVolume}건 거래</div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: changeColor }}>{arrow} {Math.abs(item.priceChange)}%</div>
+                          <div style={{ fontSize: 10, color: "var(--text-muted)" }}>변동률</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          {/* ── 선택된 아이템 상세 차트 ── */}
+          {selectedItem && (
+            <Card style={{ borderColor: "var(--color-primary)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <ItemImg itemId={selectedItem.itemId} itemName={selectedItem.itemName} rarity={selectedItem.itemRarity} size={32} />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: getRarityColor(selectedItem.itemRarity) }}>{selectedItem.itemName}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>최근 거래 기반 시세 추이</div>
+                </div>
+              </div>
+
+              {/* 미니 라인 차트 */}
+              <div style={{ marginBottom: 16, padding: "8px 0", background: "var(--bg-primary)", borderRadius: 8 }}>
+                <MiniChart trades={selectedItem.trades} color={selectedItem.priceChange >= 0 ? "#DC2626" : "#2563EB"} height={80} />
+              </div>
+
+              {/* 통계 그리드 */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--bg-primary)" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>평균 가격</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{formatGold(selectedItem.avgPrice)}</div>
+                </div>
+                <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--bg-primary)" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>가격 변동률</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: selectedItem.priceChange >= 0 ? "#DC2626" : "#2563EB" }}>
+                    {selectedItem.priceChange >= 0 ? "+" : ""}{selectedItem.priceChange}%
+                  </div>
+                </div>
+                <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--bg-primary)" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>최저 / 최고</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>{formatGold(selectedItem.minPrice)} ~ {formatGold(selectedItem.maxPrice)}</div>
+                </div>
+                <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--bg-primary)" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>거래량 / 총액</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>{selectedItem.totalVolume}건 · {formatGold(selectedItem.totalValue)}</div>
+                </div>
+              </div>
+
+              {/* 일별 거래 내역 테이블 */}
+              {selectedItem.trades.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-primary)", marginBottom: 8 }}>일별 거래 내역</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {[...selectedItem.trades].reverse().map((t, i) => (
+                      <div key={t.date} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 6, background: i % 2 === 0 ? "var(--bg-primary)" : "transparent", fontSize: 11 }}>
+                        <span style={{ color: "var(--text-muted)", width: 80 }}>{t.date.slice(5)}</span>
+                        <span style={{ flex: 1, fontWeight: 600, color: "var(--text-primary)" }}>{formatGold(t.unitPrice)}</span>
+                        <span style={{ color: "var(--text-muted)" }}>{t.count}건</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* ── 아이템 시세 카드 그리드 ── */}
+          <section>
+            <div className="section-title" style={{ marginBottom: 12 }}>📉 아이템별 시세 추이</div>
+            <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>아이템을 클릭하면 상세 차트를 확인할 수 있습니다</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+              {data.map((item) => {
+                const isUp = item.priceChange > 0;
+                const isFlat = item.priceChange === 0;
+                const changeColor = isFlat ? "var(--text-muted)" : isUp ? "#DC2626" : "#2563EB";
+                const isSelected = selectedItem?.itemName === item.itemName;
+                return (
+                  <div key={item.itemName} className="card" onClick={() => setSelectedItem(isSelected ? null : item)} style={{ padding: "12px 14px", cursor: "pointer", borderColor: isSelected ? "var(--color-primary)" : undefined, transition: "border-color 0.15s" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={24} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div>
+                      </div>
+                    </div>
+                    <MiniChart trades={item.trades} color={isUp ? "#DC2626" : "#2563EB"} height={40} />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{formatGold(item.avgPrice)}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: changeColor }}>
+                        {isFlat ? "―" : isUp ? "▲" : "▼"} {Math.abs(item.priceChange)}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </>
+      )}
+
+      {!loading && data.length === 0 && <Empty msg="인사이트 데이터를 불러오는 중입니다." />}
     </div>
   );
 }
