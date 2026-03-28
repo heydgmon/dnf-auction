@@ -10,13 +10,12 @@ import {
 } from "@/lib/types";
 import { getRarityColor, getRarityBg, formatGold, formatFullGold, validateEmail, formatDate } from "@/lib/utils";
 
-type Page = "alerts" | "auction" | "auction-sold" | "avatar-market" | "items" | "setitems";
+type Page = "alerts" | "auction" | "auction-sold" |  "items" | "setitems";
 
 const NAV_ITEMS: { id: Page; label: string }[] = [
   { id: "alerts", label: "알림" },
   { id: "auction", label: "경매장" },
   { id: "auction-sold", label: "시세" },
-  { id: "avatar-market", label: "아바타 마켓" },
   { id: "items", label: "아이템 DB" },
   { id: "setitems", label: "세트 아이템" },
 ];
@@ -93,7 +92,6 @@ export default function Home() {
         {page === "alerts" && <AlertPanel />}
         {page === "auction" && <AuctionSearchPanel />}
         {page === "auction-sold" && <AuctionSoldPanel />}
-        {page === "avatar-market" && <AvatarMarketPanel />}
         {page === "items" && <ItemSearchPanel />}
         {page === "setitems" && <SetItemPanel />}
       </main>
@@ -606,7 +604,8 @@ function ItemSearchPanel() {
 
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>아이템 이름으로 상세 정보를 검색합니다.</p>
+      <Card>// 변경 후
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>던파 전체 아이템의 상세 정보를 검색합니다. 아이템 설명, 레벨, 등급, 세트 구성 등을 확인할 수 있습니다. 경매장에 등록되지 않은 아이템도 조회 가능합니다.</p>
         <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 무한의정수)" buttonLabel="아이템 검색" /></Card>
       {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
       <ErrorMsg msg={error} />
@@ -661,7 +660,7 @@ function SetItemPanel() {
 
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>세트 아이템을 이름으로 검색합니다.</p>
+      <Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>세트 아이템을 이름으로 검색합니다. 세트 효과를 구성하는 장비 조합을 확인하고, 어떤 아이템들이 하나의 세트에 속하는지 찾아볼 수 있습니다.</p>
         <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="세트 아이템 이름" buttonLabel="세트 검색" /></Card>
       {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
       <ErrorMsg msg={error} />

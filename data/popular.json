@@ -61,13 +61,13 @@
   },
   {
     "itemName": "광휘",
-    "count": 4,
+    "count": 6,
     "lastPrice": 301,
     "itemRarity": "레어"
   },
   {
     "itemName": "광휘의 소울 결정",
-    "count": 2,
+    "count": 4,
     "lastPrice": 726,
     "itemRarity": "언커먼"
   },
@@ -79,13 +79,13 @@
   },
   {
     "itemName": "서약",
-    "count": 3,
+    "count": 4,
     "lastPrice": 2452149,
     "itemRarity": "커먼"
   },
   {
     "itemName": "강화권",
-    "count": 8,
+    "count": 11,
     "lastPrice": 64990000,
     "itemRarity": "유니크"
   },
@@ -115,7 +115,7 @@
   },
   {
     "itemName": "증폭",
-    "count": 1,
+    "count": 2,
     "lastPrice": 12139000,
     "itemRarity": "레어"
   },
@@ -133,14 +133,14 @@
   },
   {
     "itemName": "골고",
-    "count": 5,
-    "lastPrice": 139000,
+    "count": 7,
+    "lastPrice": 150626,
     "itemRarity": "유니크"
   },
   {
     "itemName": "골고라",
-    "count": 3,
-    "lastPrice": 56300000,
+    "count": 4,
+    "lastPrice": 4888888,
     "itemRarity": "유니크"
   },
   {
@@ -202,5 +202,47 @@
     "count": 2,
     "lastPrice": 12888888,
     "itemRarity": "커먼"
+  },
+  {
+    "itemName": "+11 장비 증폭권[골고라이언]",
+    "count": 1,
+    "lastPrice": 135000,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "광휘의 소",
+    "count": 2,
+    "lastPrice": 301,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "증폭권",
+    "count": 4,
+    "lastPrice": 55333330,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "웨딩",
+    "count": 1,
+    "lastPrice": 9400000,
+    "itemRarity": "커먼"
+  },
+  {
+    "itemName": "웨딩 패키",
+    "count": 1,
+    "lastPrice": 9400000,
+    "itemRarity": "커먼"
+  },
+  {
+    "itemName": "웨딩 패ㅋ",
+    "count": 1,
+    "lastPrice": 9400000,
+    "itemRarity": "커먼"
+  },
+  {
+    "itemName": "패키지",
+    "count": 2,
+    "lastPrice": 38500000,
+    "itemRarity": "레어"
   }
 ]
