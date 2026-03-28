@@ -1,46 +1,22 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { DynamoDBClient, PutItemCommand, ScanCommand, DeleteItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { AlertRule } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const ALERTS_FILE = path.join(DATA_DIR, "alerts.json");
-const POPULAR_FILE = path.join(DATA_DIR, "popular.json");
+const db = new DynamoDBClient({ region: process.env.AWS_REGION || "ap-northeast-2" });
+const ALERT_TABLE = process.env.ALERT_TABLE || "dnf-auction-alerts";
 
-async function ensureDataDir() {
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-  } catch {}
-}
-
-/* ─── Alert Rules ─── */
-
-export async function getAlerts(): Promise<AlertRule[]> {
-  await ensureDataDir();
-  try {
-    const raw = await fs.readFile(ALERTS_FILE, "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export async function saveAlerts(alerts: AlertRule[]): Promise<void> {
-  await ensureDataDir();
-  await fs.writeFile(ALERTS_FILE, JSON.stringify(alerts, null, 2));
-}
+/* ─── Alert Rules (DynamoDB) ─── */
 
 export async function addAlert(rule: AlertRule): Promise<{ success: boolean; message: string }> {
-  const alerts = await getAlerts();
-
-  const emailCount = alerts.filter((a) => a.email === rule.email && !a.fulfilled).length;
-  if (emailCount >= 3) {
+  // 이메일당 활성 알림 수 확인
+  const existing = await getAlertsByEmail(rule.email);
+  const activeCount = existing.filter(a => !a.fulfilled).length;
+  if (activeCount >= 3) {
     return { success: false, message: "이메일당 최대 3개의 알림만 등록할 수 있습니다." };
   }
 
-  const duplicate = alerts.find(
-    (a) =>
-      a.email === rule.email &&
-      a.itemName === rule.itemName &&
+  // 중복 확인
+  const duplicate = existing.find(
+    a => a.itemName === rule.itemName &&
       a.targetPrice === rule.targetPrice &&
       a.condition === rule.condition &&
       !a.fulfilled
@@ -49,37 +25,69 @@ export async function addAlert(rule: AlertRule): Promise<{ success: boolean; mes
     return { success: false, message: "이미 동일한 알림이 등록되어 있습니다." };
   }
 
-  alerts.push(rule);
-  await saveAlerts(alerts);
+  // DynamoDB 스키마에 맞춰 저장 (Lambda와 동일한 구조)
+  await db.send(new PutItemCommand({
+    TableName: ALERT_TABLE,
+    Item: {
+      alertId: { S: rule.id },
+      email: { S: rule.email },
+      itemName: { S: rule.itemName },
+      targetPrice: { N: String(rule.targetPrice) },
+      priceCondition: { S: rule.condition },
+      wordType: { S: "match" },
+      createdAt: { S: rule.createdAt },
+      isActive: { BOOL: true },
+    },
+  }));
+
   return { success: true, message: "알림이 등록되었습니다." };
 }
 
 export async function getAlertsByEmail(email: string): Promise<AlertRule[]> {
-  const alerts = await getAlerts();
-  return alerts.filter((a) => a.email === email);
-}
+  const result = await db.send(new ScanCommand({
+    TableName: ALERT_TABLE,
+    FilterExpression: "email = :email",
+    ExpressionAttributeValues: { ":email": { S: email } },
+  }));
 
-export async function fulfillAlert(id: string): Promise<void> {
-  const alerts = await getAlerts();
-  const idx = alerts.findIndex((a) => a.id === id);
-  if (idx >= 0) {
-    alerts[idx].fulfilled = true;
-    await saveAlerts(alerts);
-  }
+  return (result.Items || []).map(item => ({
+    id: item.alertId?.S || "",
+    email: item.email?.S || "",
+    itemName: item.itemName?.S || "",
+    targetPrice: Number(item.targetPrice?.N || 0),
+    condition: (item.priceCondition?.S || "below") as "below" | "above",
+    createdAt: item.createdAt?.S || "",
+    fulfilled: !(item.isActive?.BOOL ?? true),
+  }));
 }
 
 export async function deleteAlert(id: string, email: string): Promise<boolean> {
-  const alerts = await getAlerts();
-  const idx = alerts.findIndex((a) => a.id === id && a.email === email);
-  if (idx >= 0) {
-    alerts.splice(idx, 1);
-    await saveAlerts(alerts);
+  try {
+    // 먼저 해당 알림이 이 이메일의 것인지 확인
+    const alerts = await getAlertsByEmail(email);
+    const found = alerts.find(a => a.id === id);
+    if (!found) return false;
+
+    await db.send(new DeleteItemCommand({
+      TableName: ALERT_TABLE,
+      Key: { alertId: { S: id } },
+    }));
     return true;
+  } catch {
+    return false;
   }
-  return false;
 }
 
-/* ─── Popular Items (전체 유저 검색 수 트래킹) ─── */
+export async function fulfillAlert(id: string): Promise<void> {
+  await db.send(new UpdateItemCommand({
+    TableName: ALERT_TABLE,
+    Key: { alertId: { S: id } },
+    UpdateExpression: "SET isActive = :f",
+    ExpressionAttributeValues: { ":f": { BOOL: false } },
+  }));
+}
+
+/* ─── Popular Items (인메모리, 파일 불필요) ─── */
 
 interface PopularEntry {
   itemName: string;
@@ -88,44 +96,25 @@ interface PopularEntry {
   itemRarity?: string;
 }
 
-/**
- * 인기 아이템 조회 — 전체 유저의 검색 수(count) 내림차순
- */
+const popularMap = new Map<string, PopularEntry>();
+
 export async function getPopularItems(): Promise<PopularEntry[]> {
-  await ensureDataDir();
-  try {
-    const raw = await fs.readFile(POPULAR_FILE, "utf-8");
-    const items: PopularEntry[] = JSON.parse(raw);
-    return items.sort((a, b) => b.count - a.count).slice(0, 20);
-  } catch {
-    return [];
-  }
+  return Array.from(popularMap.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 20);
 }
 
-/**
- * 검색 트래킹 — 모든 유저의 검색을 누적 카운트
- * /api/auction route에서 검색 성공 시 호출됨
- */
 export async function trackSearch(
   itemName: string,
   lastPrice?: number,
   itemRarity?: string
 ): Promise<void> {
-  await ensureDataDir();
-  let items: PopularEntry[] = [];
-  try {
-    const raw = await fs.readFile(POPULAR_FILE, "utf-8");
-    items = JSON.parse(raw);
-  } catch {}
-
-  const existing = items.find((i) => i.itemName === itemName);
+  const existing = popularMap.get(itemName);
   if (existing) {
     existing.count += 1;
     if (lastPrice !== undefined) existing.lastPrice = lastPrice;
     if (itemRarity) existing.itemRarity = itemRarity;
   } else {
-    items.push({ itemName, count: 1, lastPrice, itemRarity });
+    popularMap.set(itemName, { itemName, count: 1, lastPrice, itemRarity });
   }
-
-  await fs.writeFile(POPULAR_FILE, JSON.stringify(items, null, 2));
 }
