@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+// Next.js가 빌드 시 정적으로 캐시하지 않도록 강제
+export const dynamic = "force-dynamic";
+
 const API_BASE = "https://api.neople.co.kr";
 const PAGE_LIMIT = 400;
 const MAX_PAGES = 2;
@@ -56,13 +59,15 @@ async function fetchKeyword(keyword: string, apiKey: string): Promise<any[]> {
 }
 
 export async function GET() {
+  console.log("[TRENDING] called");
+
   try {
     if (cache && Date.now() - cache.updatedAt < CACHE_TTL) {
+      console.log("[TRENDING] returning cached data");
       return NextResponse.json({ items: cache.items });
     }
 
     const apiKey = process.env.NEOPLE_API_KEY;
-
     console.log("[TRENDING] NEOPLE_API_KEY exists:", !!apiKey);
 
     if (!apiKey) {
