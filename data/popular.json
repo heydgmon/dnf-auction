@@ -241,8 +241,8 @@
   },
   {
     "itemName": "패키지",
-    "count": 7,
-    "lastPrice": 10450000,
+    "count": 8,
+    "lastPrice": 10444000,
     "itemRarity": "유니크"
   },
   {
@@ -337,14 +337,14 @@
   },
   {
     "itemName": "닳아버린 순례의 증표",
-    "count": 38,
+    "count": 39,
     "lastPrice": 263043,
     "itemRarity": "유니크"
   },
   {
     "itemName": "닳아",
-    "count": 1,
-    "lastPrice": 290000,
+    "count": 4,
+    "lastPrice": 263043,
     "itemRarity": "유니크"
   },
   {
@@ -436,5 +436,35 @@
     "count": 2,
     "lastPrice": 263043,
     "itemRarity": "유니크"
+  },
+  {
+    "itemName": "유니크",
+    "count": 1,
+    "lastPrice": 11500,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "유니크 소울 결정",
+    "count": 1,
+    "lastPrice": 11500,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "피로 회",
+    "count": 1,
+    "lastPrice": 46381,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "피로 회복의 영약",
+    "count": 1,
+    "lastPrice": 46381,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "보주 융합 장치",
+    "count": 1,
+    "lastPrice": 230,
+    "itemRarity": "언커먼"
   }
 ]

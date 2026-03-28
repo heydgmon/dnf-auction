@@ -10,9 +10,10 @@ import {
 } from "@/lib/types";
 import { getRarityColor, getRarityBg, formatGold, formatFullGold, validateEmail, formatDate } from "@/lib/utils";
 
-type Page = "alerts" | "auction" | "auction-sold" | "items" | "setitems";
+type Page = "home" | "alerts" | "auction" | "auction-sold" | "items" | "setitems";
 
 const NAV_ITEMS: { id: Page; label: string }[] = [
+  { id: "home", label: "메인" },
   { id: "alerts", label: "알림" },
   { id: "auction", label: "경매장" },
   { id: "auction-sold", label: "시세" },
@@ -69,7 +70,7 @@ function getRecent() { return recentSearches; }
    ROOT
    ═══════════════════════════════════════ */
 export default function Home() {
-  const [page, setPage] = useState<Page>("alerts");
+  const [page, setPage] = useState<Page>("home");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +85,7 @@ export default function Home() {
       {/* Header */}
       <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
         <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <button onClick={() => setPage("alerts")} style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "none", cursor: "pointer" }}>
+          <button onClick={() => setPage("home")} style={{ display: "flex", alignItems: "center", gap: 10, border: "none", background: "none", cursor: "pointer" }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--color-primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900 }}>D</div>
             <div style={{ textAlign: "left" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>던파 경매장</div>
@@ -114,6 +115,7 @@ export default function Home() {
 
       {/* Main */}
       <main style={{ flex: 1, maxWidth: 960, margin: "0 auto", width: "100%", padding: "24px 16px" }}>
+        {page === "home" && <HomePanel onNavigate={setPage} />}
         {page === "alerts" && <AlertPanel />}
         {page === "auction" && <AuctionSearchPanel />}
         {page === "auction-sold" && <AuctionSoldPanel />}
@@ -428,7 +430,7 @@ function AuctionSearchPanel() {
       {!loading && results.length > 0 && (
         <div>
           <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{results.length}건 · 개당 가격 낮은 순</p>
-          {results.length >= 395 && (
+          {results.length >= 750 && (
             <div style={{ padding: "8px 12px", borderRadius: 8, marginBottom: 8, fontSize: 11, background: "var(--color-accent-light)", color: "var(--color-accent)", border: "1px solid var(--color-accent)" }}>
               ⚠ 등록 매물이 많아 일부만 표시됩니다. 정확한 최저가는 게임 내 경매장 또는 시세 탭을 확인해주세요.
             </div>
@@ -627,6 +629,101 @@ function SetItemPanel() {
           </div>
         </div>)}
       {!loading && searched && !results.length && !error && <Empty msg="검색 결과가 없습니다." />}
+    </div>
+  );
+}
+
+/* ═══ 메인 (트렌딩) ═══ */
+interface TrendingItem {
+  itemName: string;
+  auctionCount: number;
+  lowestPrice: number;
+  itemRarity: string;
+  itemId: string;
+  itemType: string;
+}
+
+function HomePanel({ onNavigate }: { onNavigate: (p: Page) => void }) {
+  const [items, setItems] = useState<TrendingItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/trending")
+      .then(r => r.json())
+      .then(d => setItems(d.items || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const medalColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
+
+  return (
+    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* 히어로 */}
+      <div style={{ textAlign: "center", padding: "32px 16px 16px" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginBottom: 6 }}>던파 경매장</h1>
+        <p style={{ fontSize: 13, color: "var(--text-muted)" }}>실시간 경매장 시세 · 아이템 검색 · 가격 알림</p>
+      </div>
+
+      {/* 트렌딩 랭킹 */}
+      <section>
+        <div className="section-title" style={{ marginBottom: 12 }}>🔥 경매장 인기 아이템 TOP 20</div>
+        <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>현재 경매장에 등록된 매물이 많은 순서입니다.</p>
+
+        {loading && <SkeletonList count={8} />}
+
+        {!loading && items.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {/* Top 3 — 대형 카드 */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10, marginBottom: 12 }}>
+              {items.slice(0, 3).map((item, i) => (
+                <div key={item.itemName} className="card" style={{ padding: 0, overflow: "hidden", border: `2px solid ${medalColors[i]}30`, position: "relative" }}>
+                  <div style={{ position: "absolute", top: 0, left: 0, width: 36, height: 36, background: medalColors[i], borderRadius: "0 0 12px 0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, color: i === 0 ? "#92400E" : "#fff" }}>
+                    {i + 1}
+                  </div>
+                  <div style={{ padding: "20px 16px 16px", textAlign: "center" }}>
+                    <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={48} />
+                    <div style={{ fontSize: 14, fontWeight: 700, color: getRarityColor(item.itemRarity), marginTop: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.itemName}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{item.itemType}</div>
+                    <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)" }}>등록 매물</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--color-primary)" }}>{item.auctionCount}건+</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 4위 이하 — 리스트 */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {items.slice(3, 20).map((item, i) => (
+                <div key={item.itemName} className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "var(--text-muted)", flexShrink: 0 }}>
+                    {i + 4}
+                  </div>
+                  <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.itemName}
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{item.itemType}</div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-primary)" }}>{item.auctionCount}건+</div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>등록 매물</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!loading && items.length === 0 && <Empty msg="데이터를 불러오는 중입니다." />}
+      </section>
     </div>
   );
 }
