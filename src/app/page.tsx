@@ -121,8 +121,14 @@ export default function Home() {
         {page === "setitems" && <SetItemPanel />}
       </main>
 
-      <footer style={{ padding: "16px 0", textAlign: "center", fontSize: 10, color: "var(--text-muted)" }}>
-        Data provided by Neople Open API · Not affiliated with Neople or Nexon
+      <footer style={{ padding: "20px 16px", textAlign: "center", fontSize: 10, color: "var(--text-muted)" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 8 }}>
+          <a href="/about" style={{ color: "var(--text-muted)", textDecoration: "none" }}>소개</a>
+          <a href="/privacy" style={{ color: "var(--text-muted)", textDecoration: "none" }}>개인정보 처리방침</a>
+          <a href="/terms" style={{ color: "var(--text-muted)", textDecoration: "none" }}>이용약관</a>
+          <a href="/contact" style={{ color: "var(--text-muted)", textDecoration: "none" }}>문의</a>
+        </div>
+        <p>Data provided by Neople Open API · Not affiliated with Neople or Nexon</p>
       </footer>
     </div>
   );

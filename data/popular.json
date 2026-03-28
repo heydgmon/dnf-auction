@@ -1,8 +1,8 @@
 [
   {
     "itemName": "토큰",
-    "count": 43,
-    "lastPrice": 5600,
+    "count": 44,
+    "lastPrice": 4948,
     "itemRarity": "언커먼"
   },
   {
@@ -13,8 +13,8 @@
   },
   {
     "itemName": "PC방 토큰 교환권",
-    "count": 13,
-    "lastPrice": 5600,
+    "count": 18,
+    "lastPrice": 4948,
     "itemRarity": "언커먼"
   },
   {
@@ -241,7 +241,7 @@
   },
   {
     "itemName": "패키지",
-    "count": 6,
+    "count": 7,
     "lastPrice": 10450000,
     "itemRarity": "유니크"
   },
@@ -337,7 +337,7 @@
   },
   {
     "itemName": "닳아버린 순례의 증표",
-    "count": 37,
+    "count": 38,
     "lastPrice": 263043,
     "itemRarity": "유니크"
   },
@@ -403,8 +403,8 @@
   },
   {
     "itemName": "운명의 아르카나 패키지",
-    "count": 1,
-    "lastPrice": 37219000,
+    "count": 2,
+    "lastPrice": 37219557,
     "itemRarity": "레어"
   },
   {
@@ -423,6 +423,18 @@
     "itemName": "+ 장비 증폭권[골고라이언]",
     "count": 1,
     "lastPrice": 22000,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "농밀한 이계의 정수",
+    "count": 2,
+    "lastPrice": 31,
+    "itemRarity": "언커먼"
+  },
+  {
+    "itemName": "닳아버린 순례",
+    "count": 2,
+    "lastPrice": 263043,
     "itemRarity": "유니크"
   }
 ]
