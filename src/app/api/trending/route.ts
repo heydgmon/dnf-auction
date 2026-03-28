@@ -13,12 +13,6 @@ const KEYWORDS = [
   "리노", "서약", "칭호", "크리쳐", "오라", "무기",
 ];
 
-function getApiKey(): string {
-  const key = process.env.NEOPLE_API_KEY;
-  if (!key) throw new Error("NEOPLE_API_KEY not configured");
-  return key;
-}
-
 async function fetchKeyword(keyword: string, apiKey: string): Promise<any[]> {
   let allRows: any[] = [];
   let lastAuctionNo: number | null = null;
@@ -67,11 +61,19 @@ export async function GET() {
       return NextResponse.json({ items: cache.items });
     }
 
-    const apiKey = getApiKey();
+    const apiKey = process.env.NEOPLE_API_KEY;
+
+    console.log("[TRENDING] NEOPLE_API_KEY exists:", !!apiKey);
+
+    if (!apiKey) {
+      return NextResponse.json({ items: [], error: "NEOPLE_API_KEY not configured" });
+    }
 
     const promises = KEYWORDS.map((keyword) => fetchKeyword(keyword, apiKey));
     const allResults = await Promise.all(promises);
     const allRows = allResults.flat();
+
+    console.log("[TRENDING] total rows fetched:", allRows.length);
 
     const itemMap = new Map<string, {
       itemName: string;
@@ -103,9 +105,12 @@ export async function GET() {
       .sort((a, b) => b.auctionCount - a.auctionCount)
       .slice(0, 30);
 
+    console.log("[TRENDING] result items:", sorted.length);
+
     cache = { items: sorted, updatedAt: Date.now() };
     return NextResponse.json({ items: sorted });
   } catch (err: any) {
+    console.log("[TRENDING] error:", err.message);
     if (cache) return NextResponse.json({ items: cache.items });
     return NextResponse.json({ items: [], error: err.message });
   }

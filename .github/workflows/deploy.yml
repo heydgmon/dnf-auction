@@ -14,7 +14,7 @@ env:
   AWS_ACCOUNT_ID: 604227045332
   ECR_REPOSITORY: dnf-auction
   ECS_CLUSTER: dnf-auction-cluster
-  ECS_SERVICE: dnf-auction-service
+  ECS_SERVICE: dnf-auction-service-o4o5405p
 
 jobs:
   deploy:
