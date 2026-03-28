@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 
 const API_BASE = "https://api.neople.co.kr";
 const PAGE_LIMIT = 400;
-const MAX_PAGES = 2; // 키워드당 최대 800건
+const MAX_PAGES = 2;
 
 let cache: { items: any[]; updatedAt: number } | null = null;
-const CACHE_TTL = 3 * 60 * 1000; // 3분
+const CACHE_TTL = 3 * 60 * 1000;
 
 const KEYWORDS = [
   "카드", "강화권", "큐브", "토큰", "정수", "증폭", "보주",
@@ -41,10 +41,9 @@ async function fetchKeyword(keyword: string, apiKey: string): Promise<any[]> {
         cache: "no-store",
       });
 
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); } catch { break; }
-      if (!res.ok || !data.rows || data.rows.length === 0) break;
+      if (!res.ok) break;
+      const data = await res.json();
+      if (!data.rows || data.rows.length === 0) break;
 
       const newRows = lastAuctionNo !== null
         ? data.rows.filter((r: any) => r.auctionNo !== lastAuctionNo)
@@ -74,7 +73,6 @@ export async function GET() {
     const allResults = await Promise.all(promises);
     const allRows = allResults.flat();
 
-    // 아이템 이름별로 등록 건수 집계
     const itemMap = new Map<string, {
       itemName: string;
       auctionCount: number;
@@ -101,8 +99,7 @@ export async function GET() {
       }
     }
 
-    // 등록 건수 내림차순 → 상위 30개
-    const sorted = [...itemMap.values()]
+    const sorted = Array.from(itemMap.values())
       .sort((a, b) => b.auctionCount - a.auctionCount)
       .slice(0, 30);
 
@@ -110,6 +107,6 @@ export async function GET() {
     return NextResponse.json({ items: sorted });
   } catch (err: any) {
     if (cache) return NextResponse.json({ items: cache.items });
-    return NextResponse.json({ items: [] });
+    return NextResponse.json({ items: [], error: err.message });
   }
 }
