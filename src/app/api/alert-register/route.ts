@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addAlert } from "@/lib/alert-store";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { validateEmail } from "@/lib/utils";
-import { AlertRule, AlertRegisterRequest } from "@/lib/types";
+
+const ALERT_API_URL = process.env.ALERT_API_URL || "https://s0fmsbmnji.execute-api.ap-northeast-2.amazonaws.com";
 
 export async function POST(request: NextRequest) {
   try {
-    const body: AlertRegisterRequest = await request.json();
+    const body = await request.json();
     const { email, itemName, targetPrice, condition } = body;
 
     // 입력 검증
@@ -58,24 +58,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rule: AlertRule = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      email,
-      itemName: itemName.trim(),
-      targetPrice,
-      condition,
-      createdAt: new Date().toISOString(),
-      fulfilled: false,
-    };
+    // API Gateway → Lambda → DynamoDB
+    const res = await fetch(`${ALERT_API_URL}/alerts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, itemName, targetPrice, condition }),
+    });
 
-    const result = await addAlert(rule);
-
-    if (!result.success) {
-      return NextResponse.json({ success: false, message: result.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ success: true, message: result.message, rule });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (err: any) {
+    console.error("alert-register error:", err);
     return NextResponse.json(
       { success: false, message: "서버 오류가 발생했습니다." },
       { status: 500 }

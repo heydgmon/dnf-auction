@@ -1,8 +1,8 @@
 [
   {
     "itemName": "토큰",
-    "count": 25,
-    "lastPrice": 6000,
+    "count": 39,
+    "lastPrice": 5664,
     "itemRarity": "언커먼"
   },
   {
@@ -19,7 +19,7 @@
   },
   {
     "itemName": "큐브",
-    "count": 8,
+    "count": 9,
     "lastPrice": 28,
     "itemRarity": "언커먼"
   },
@@ -79,13 +79,13 @@
   },
   {
     "itemName": "서약",
-    "count": 1,
+    "count": 3,
     "lastPrice": 2452149,
     "itemRarity": "커먼"
   },
   {
     "itemName": "강화권",
-    "count": 6,
+    "count": 8,
     "lastPrice": 64990000,
     "itemRarity": "유니크"
   },
@@ -157,8 +157,8 @@
   },
   {
     "itemName": "리노",
-    "count": 1,
-    "lastPrice": 27000000,
+    "count": 2,
+    "lastPrice": 27500000,
     "itemRarity": "유니크"
   },
   {
@@ -166,5 +166,41 @@
     "count": 6,
     "lastPrice": 56300000,
     "itemRarity": "유니크"
+  },
+  {
+    "itemName": "힘의",
+    "count": 1,
+    "lastPrice": 17500,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "힘의 정수",
+    "count": 1,
+    "lastPrice": 35977,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "골고라이",
+    "count": 1,
+    "lastPrice": 4888888,
+    "itemRarity": "유니크"
+  },
+  {
+    "itemName": "칼레이",
+    "count": 1,
+    "lastPrice": 1234567,
+    "itemRarity": "레어"
+  },
+  {
+    "itemName": "짙은",
+    "count": 1,
+    "lastPrice": 12888888,
+    "itemRarity": "커먼"
+  },
+  {
+    "itemName": "짙은 심연의 편",
+    "count": 2,
+    "lastPrice": 12888888,
+    "itemRarity": "커먼"
   }
 ]

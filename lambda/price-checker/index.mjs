@@ -1,21 +1,38 @@
+/**
+ * Lambda: alert-checker (외부 패키지 없음 — Lambda 콘솔 에디터에서 바로 사용 가능)
+ *
+ * DynamoDB 테이블: dnf-auction-alerts (파티션 키: alertId)
+ * Resend API: fetch로 직접 호출
+ *
+ * 환경변수:
+ *   ALERT_TABLE_NAME  - DynamoDB 테이블명 (dnf-auction-alerts)
+ *   RESEND_API_KEY    - Resend API 키
+ *   FROM_EMAIL        - 발신 이메일 (Resend 인증 주소 또는 onboarding@resend.dev)
+ *   NEOPLE_API_KEY    - Neople Open API 키
+ */
+
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   ScanCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { Resend } from "resend";
 
 const dynamoClient = new DynamoDBClient({ region: "ap-northeast-2" });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const NEOPLE_API_KEY = process.env.NEOPLE_API_KEY;
-const TABLE_NAME = process.env.ALERT_TABLE_NAME;
-const FROM_EMAIL = process.env.FROM_EMAIL;
+const TABLE_NAME = process.env.ALERT_TABLE_NAME || "dnf-auction-alerts";
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const FROM_EMAIL = process.env.FROM_EMAIL || "onboarding@resend.dev";
 
 export const handler = async (event) => {
-  console.log("Price checker triggered", new Date().toISOString());
+  console.log("Alert checker triggered", new Date().toISOString());
+
+  if (!RESEND_API_KEY || !NEOPLE_API_KEY) {
+    console.error("Missing env vars: RESEND_API_KEY or NEOPLE_API_KEY");
+    return { statusCode: 500, body: "Missing env vars" };
+  }
 
   // 1. 활성화된 알림 조건 전부 조회
   const alertsResult = await docClient.send(
@@ -29,22 +46,23 @@ export const handler = async (event) => {
   const alerts = alertsResult.Items || [];
   console.log(`Active alerts: ${alerts.length}`);
 
-  if (alerts.length === 0) return { statusCode: 200, body: "No active alerts" };
+  if (alerts.length === 0) {
+    return { statusCode: 200, body: "No active alerts" };
+  }
 
-  // 2. 아이템별로 그룹핑 (같은 아이템 중복 API 호출 방지)
+  // 2. 아이템별 그룹핑 (같은 아이템 중복 API 호출 방지)
   const itemGroups = {};
   for (const alert of alerts) {
-    const key = `${alert.itemName}__${alert.wordType}`;
+    const key = `${alert.itemName}__${alert.wordType || "match"}`;
     if (!itemGroups[key]) itemGroups[key] = [];
     itemGroups[key].push(alert);
   }
 
-  // 3. 아이템별로 Neople API 시세 조회 + 조건 매칭 + 알림 발송
+  // 3. 아이템별 Neople API 시세 조회 + 조건 매칭 + 알림 발송
   for (const [key, groupAlerts] of Object.entries(itemGroups)) {
     const [itemName, wordType] = key.split("__");
 
     try {
-      // Neople 시세 API 호출
       const params = new URLSearchParams({
         itemName,
         wordType: wordType || "match",
@@ -60,11 +78,17 @@ export const handler = async (event) => {
       const data = await res.json();
       const rows = data.rows || [];
 
-      if (rows.length === 0) continue;
+      if (rows.length === 0) {
+        console.log(`No auction data for: ${itemName}`);
+        continue;
+      }
 
-      // 최저가 추출
       const lowestPrice = rows[0].unitPrice;
-      const avgPrice = rows.reduce((s, r) => s + r.unitPrice, 0) / rows.length;
+      const avgPrice = Math.round(
+        rows.reduce((s, r) => s + r.unitPrice, 0) / rows.length
+      );
+
+      console.log(`${itemName}: lowest=${lowestPrice} avg=${avgPrice}`);
 
       // 각 알림 조건과 매칭
       for (const alert of groupAlerts) {
@@ -80,29 +104,52 @@ export const handler = async (event) => {
         // 중복 알림 방지: 마지막 알림에서 30분 이내면 스킵
         if (alert.lastNotified) {
           const lastTime = new Date(alert.lastNotified).getTime();
-          const now = Date.now();
-          if (now - lastTime < 30 * 60 * 1000) continue;
+          if (Date.now() - lastTime < 30 * 60 * 1000) {
+            console.log(`Skipping ${alert.alertId}: notified within 30min`);
+            continue;
+          }
         }
 
-        // Resend로 이메일 발송
-        await resend.emails.send({
-          from: FROM_EMAIL,
-          to: alert.email,
-          subject: `[던파 경매장] ${itemName} 시세 알림`,
-          html: buildEmailHtml(itemName, lowestPrice, avgPrice, alert, rows),
-        });
+        // Resend API로 이메일 발송 (fetch 직접 호출)
+        console.log(`Sending alert: ${itemName} → ${alert.email}`);
 
-        // lastNotified 갱신
-        await docClient.send(
-          new UpdateCommand({
-            TableName: TABLE_NAME,
-            Key: { alertId: alert.alertId },
-            UpdateExpression: "SET lastNotified = :now",
-            ExpressionAttributeValues: { ":now": new Date().toISOString() },
-          })
-        );
+        try {
+          const emailRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${RESEND_API_KEY}`,
+            },
+            body: JSON.stringify({
+              from: FROM_EMAIL,
+              to: [alert.email],
+              subject: `[던파 경매장] ${itemName} 시세 알림`,
+              html: buildEmailHtml(itemName, lowestPrice, avgPrice, alert, rows),
+            }),
+          });
 
-        console.log(`Notified ${alert.email} for ${itemName}`);
+          if (emailRes.ok) {
+            const result = await emailRes.json();
+            console.log(`Email sent: ${result.id}`);
+
+            // lastNotified 갱신
+            await docClient.send(
+              new UpdateCommand({
+                TableName: TABLE_NAME,
+                Key: { alertId: alert.alertId },
+                UpdateExpression: "SET lastNotified = :now",
+                ExpressionAttributeValues: {
+                  ":now": new Date().toISOString(),
+                },
+              })
+            );
+          } else {
+            const errBody = await emailRes.text();
+            console.error(`Resend error (${emailRes.status}): ${errBody}`);
+          }
+        } catch (emailErr) {
+          console.error(`Email send failed for ${alert.email}:`, emailErr);
+        }
       }
     } catch (err) {
       console.error(`Error processing ${itemName}:`, err);
