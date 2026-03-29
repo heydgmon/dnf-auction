@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "개인정보 처리방침 — 던파 경매장",
-  description: "던파 경매장 개인정보 처리방침",
+  title: "개인정보 처리방침 — 던프",
+  description: "던프 개인정보 처리방침",
 };
 
 export default function PrivacyPage() {

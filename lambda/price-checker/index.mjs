@@ -123,7 +123,7 @@ export const handler = async (event) => {
             body: JSON.stringify({
               from: FROM_EMAIL,
               to: [alert.email],
-              subject: `[던파 경매장] ${itemName} 시세 알림`,
+              subject: `[던프] ${itemName} 시세 알림`,
               html: buildEmailHtml(itemName, lowestPrice, avgPrice, alert, rows),
             }),
           });
@@ -191,7 +191,7 @@ function buildEmailHtml(itemName, lowestPrice, avgPrice, alert, rows) {
 
   return `
     <div style="background:#0a0a0f;color:#e8e8f0;padding:24px;font-family:sans-serif;max-width:500px;">
-      <h2 style="color:#f0c040;margin:0 0 16px;">던파 경매장 시세 알림</h2>
+      <h2 style="color:#f0c040;margin:0 0 16px;">던프 시세 알림</h2>
       <p style="color:#9898b4;margin:0 0 8px;">
         <strong style="color:#e8e8f0;">${itemName}</strong> 아이템이
         설정하신 조건에 도달했습니다.

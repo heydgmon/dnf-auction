@@ -12,7 +12,7 @@ export default function ContactPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // mailto 방식으로 이메일 클라이언트 열기
-    const subject = encodeURIComponent(`[던파 경매장 문의] ${name}`);
+    const subject = encodeURIComponent(`[던프 문의] ${name}`);
     const body = encodeURIComponent(`이름: ${name}\n이메일: ${email}\n\n${message}`);
     window.location.href = `mailto:rhr2308@gmail.com?subject=${subject}&body=${body}`;
     setSubmitted(true);

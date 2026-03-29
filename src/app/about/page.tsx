@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "소개 — 던파 경매장",
-  description: "던파 경매장 시세 알림 & 아이템 검색 서비스 소개",
+  title: "소개 — 던프",
+  description: "던프 시세 알림 & 아이템 검색 서비스 소개",
 };
 
 export default function AboutPage() {

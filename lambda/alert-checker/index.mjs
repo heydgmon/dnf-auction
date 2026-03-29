@@ -98,7 +98,7 @@ export const handler = async (event) => {
             body: JSON.stringify({
               from: fromEmail,
               to: [email],
-              subject: `[던파 경매장] ${itemName} 시세 알림`,
+              subject: `[던프] ${itemName} 시세 알림`,
               html: `
                 <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
                   <h2 style="color:#18182a;margin:0 0 16px">시세 알림</h2>

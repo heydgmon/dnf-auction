@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "이용약관 — 던파 경매장",
-  description: "던파 경매장 이용약관",
+  title: "이용약관 — 던프",
+  description: "던프 이용약관",
 };
 
 export default function TermsPage() {
@@ -14,7 +14,7 @@ export default function TermsPage() {
       <section style={{ marginBottom: 28 }}>
         <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 10 }}>제1조 (목적)</h2>
         <p style={{ fontSize: 14, color: "#475569" }}>
-          본 약관은 던파 경매장(이하 "서비스")의 이용과 관련하여 서비스 운영자와 이용자 간의 권리, 의무 및 기타 필요한 사항을 규정함을 목적으로 합니다.
+          본 약관은 던프(이하 "서비스")의 이용과 관련하여 서비스 운영자와 이용자 간의 권리, 의무 및 기타 필요한 사항을 규정함을 목적으로 합니다.
         </p>
       </section>
 
