@@ -8,12 +8,8 @@ export async function GET() {
     if (isSharedCacheValid()) {
       return NextResponse.json({ items: getSharedCache()!.trendingItems });
     }
-
     const data = await getSharedBuildPromise();
-    if (data) {
-      return NextResponse.json({ items: data.trendingItems });
-    }
-
+    if (data) return NextResponse.json({ items: data.trendingItems });
     return NextResponse.json({ items: [] });
   } catch (err: any) {
     const cached = getSharedCache();

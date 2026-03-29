@@ -1,25 +1,16 @@
 /**
  * 경매장 데이터 공유 캐시
  *
- * trending API가 수집한 전체 raw row를 여기에 저장하면
- * BIS API가 별도 API 호출 없이 itemType으로 분류 가능
+ * 서버 시작 시 한번 Neople API를 호출하여 경매장 등록 아이템을 수집.
+ * trending, insight, bis API가 이 캐시를 공유.
+ *
+ * ★ 핵심: 키워드를 매우 넓게 잡아서 칭호/크리쳐/오라/카드 등
+ *   이름에 카테고리 단어가 없는 아이템도 수집
  */
 
-interface AuctionRow {
-  itemName: string;
-  itemId: string;
-  itemRarity: string;
-  itemType: string;
-  unitPrice: number;
-  count: number;
-  [key: string]: any;
-}
-
 interface SharedCache {
-  // trending용 가공 데이터
   trendingItems: any[];
-  // BIS용 raw row (itemType 분류에 사용)
-  allAuctionRows: AuctionRow[];
+  allAuctionRows: any[];
   updatedAt: number;
 }
 
@@ -29,11 +20,19 @@ let buildPromise: Promise<SharedCache | null> | null = null;
 const CACHE_TTL = 3 * 60 * 1000;
 const API_BASE = "https://api.neople.co.kr";
 
-// 광범위 키워드 — 경매장의 다양한 카테고리를 커버
+// ── 광범위 키워드 ──
+// 경매장의 모든 탭(장비/소비/기타/칭호/크리쳐/오라/카드 등)을 커버하려면
+// 아이템 이름에 자주 등장하는 짧은 글자로 수집해야 함
+// wordType=full + limit=400으로 각 키워드당 최대 400건
 const KEYWORDS = [
+  // 거래 활발 키워드 (기존)
   "카드", "강화권", "큐브", "토큰", "증폭",
-  "패키지", "골고", "순례", "크리쳐", "오라",
-  "칭호", "상자", "계약", "운명", "알",
+  "패키지", "골고", "순례", "에픽", "소울",
+  // 칭호/크리쳐/오라를 잡기 위한 넓은 키워드
+  "칭호", "크리쳐", "오라", "상자",
+  "계약", "운명", "알", "봉인",
+  // 1글자 — 이름에 카테고리명이 없는 아이템까지 수집
+  "의", "은",
 ];
 
 async function fetchAuction(keyword: string, apiKey: string): Promise<any[]> {
@@ -59,7 +58,7 @@ async function buildData(): Promise<SharedCache | null> {
     KEYWORDS.map((kw) => fetchAuction(kw, apiKey))
   );
 
-  // 중복 제거 (auctionNo 기준)
+  // auctionNo 기준 중복 제거
   const seen = new Set<number>();
   const allRows: any[] = [];
   for (const rows of results) {
@@ -100,6 +99,17 @@ async function buildData(): Promise<SharedCache | null> {
   const trendingItems = Array.from(itemMap.values())
     .sort((a, b) => b.auctionCount - a.auctionCount)
     .slice(0, 30);
+
+  // 디버그: 카테고리별 수집 현황
+  const typeCounts = new Map<string, number>();
+  for (const row of allRows) {
+    const t = row.itemType || "unknown";
+    typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+  }
+  console.log("[SHARED] itemType distribution:");
+  for (const [type, count] of [...typeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15)) {
+    console.log(`  ${type}: ${count}`);
+  }
 
   return {
     trendingItems,
