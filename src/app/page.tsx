@@ -10,7 +10,7 @@ import {
 } from "@/lib/types";
 import { getRarityColor, getRarityBg, formatGold, formatFullGold, validateEmail, formatDate } from "@/lib/utils";
 
-type Page = "home" | "alerts" | "auction" | "auction-sold" | "insight" | "items" | "setitems";
+type Page = "home" | "alerts" | "auction" | "auction-sold" | "insight" | "items" | "setitems" | "bis";
 
 const NAV_ITEMS: { id: Page; label: string }[] = [
   { id: "home", label: "메인" },
@@ -20,6 +20,7 @@ const NAV_ITEMS: { id: Page; label: string }[] = [
   { id: "insight", label: "인사이트" },
   { id: "items", label: "아이템 DB" },
   { id: "setitems", label: "세트 아이템" },
+  { id: "bis", label: "종결템" },
 ];
 
 function itemImageUrl(id: string) { return `https://img-api.neople.co.kr/df/items/${id}`; }
@@ -91,6 +92,7 @@ export default function Home() {
         {page === "insight" && <InsightPanel />}
         {page === "items" && <ItemSearchPanel />}
         {page === "setitems" && <SetItemPanel />}
+        {page === "bis" && <BisPanel />}
       </main>
       <footer style={{ padding: "20px 16px", textAlign: "center", fontSize: 10, color: "var(--text-muted)" }}>
         <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 8 }}><a href="/about" style={{ color: "var(--text-muted)", textDecoration: "none" }}>소개</a><a href="/privacy" style={{ color: "var(--text-muted)", textDecoration: "none" }}>개인정보 처리방침</a><a href="/terms" style={{ color: "var(--text-muted)", textDecoration: "none" }}>이용약관</a><a href="/contact" style={{ color: "var(--text-muted)", textDecoration: "none" }}>문의</a><a href="https://developers.neople.co.kr/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Neople Open API</a></div>
@@ -207,6 +209,65 @@ function InsightPanel() {
         <section><div className="section-title" style={{ marginBottom: 12 }}>📉 아이템별 시세 추이</div><p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>아이템을 클릭하면 상세 차트를 확인할 수 있습니다</p><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>{data.map((item) => { const isUp = item.priceChange > 0; const isFlat = item.priceChange === 0; const changeColor = isFlat ? "var(--text-muted)" : isUp ? "#DC2626" : "#2563EB"; const isSelected = selectedItem?.itemName === item.itemName; return (<div key={item.itemName} className="card" onClick={() => setSelectedItem(isSelected ? null : item)} style={{ padding: "12px 14px", cursor: "pointer", borderColor: isSelected ? "var(--color-primary)" : undefined, transition: "border-color 0.15s" }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={24} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 11, fontWeight: 600, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div></div></div><MiniChart trades={item.trades} color={isUp ? "#DC2626" : "#2563EB"} height={40} /><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}><span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{formatGold(item.avgPrice)}</span><span style={{ fontSize: 11, fontWeight: 600, color: changeColor }}>{isFlat ? "―" : isUp ? "▲" : "▼"} {Math.abs(item.priceChange)}%</span></div></div>); })}</div></section>
       </>)}
       {!loading && data.length === 0 && <Empty msg="인사이트 데이터를 불러오는 중입니다." />}
+    </div>
+  );
+}
+
+/* ═══ 종결템 ═══ */
+interface BisItem { itemName: string; itemId: string; itemRarity: string; lowestPrice: number; auctionCount: number; }
+interface BisCategory { category: string; emoji: string; items: BisItem[]; }
+
+function BisPanel() {
+  const [categories, setCategories] = useState<BisCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/bis")
+      .then(r => r.json())
+      .then(d => setCategories(d.categories || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>🏆 종결템 시세</h2>
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>칭호 · 크리쳐 · 오라 · 마법부여 카드의 실시간 경매장 최저가를 확인합니다</p>
+      </Card>
+
+      {loading && <SkeletonList count={8} />}
+
+      {!loading && categories.map((cat) => (
+        <section key={cat.category}>
+          <div className="section-title" style={{ marginBottom: 10 }}>
+            <span>{cat.emoji}</span> {cat.category}
+          </div>
+          {cat.items.length === 0 && <p style={{ fontSize: 12, color: "var(--text-muted)", padding: "8px 0" }}>현재 경매장에 등록된 매물이 없습니다</p>}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+            {cat.items.map((item) => (
+              <div key={item.itemName} className="card" style={{ padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={32} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>{item.itemRarity}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                  <div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>최저가</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--color-accent-dim)" }}>{formatGold(item.lowestPrice)}</div>
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", textAlign: "right" }}>{item.auctionCount}건 등록</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+
+      {!loading && categories.length === 0 && <Empty msg="종결템 데이터를 불러오는 중입니다." />}
     </div>
   );
 }
