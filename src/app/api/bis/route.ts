@@ -4,98 +4,56 @@ import { neopleGet } from "@/lib/neople";
 export const dynamic = "force-dynamic";
 
 let cache: { data: any; updatedAt: number } | null = null;
-const CACHE_TTL = 3 * 60 * 1000;
+const CACHE_TTL = 5 * 60 * 1000;
 
-// ─── 카테고리별 종결템 목록 ───
-// 던파 시즌에 따라 수동 업데이트 필요
-const BIS_DATA = [
+const CATEGORIES = [
   {
     category: "칭호",
     emoji: "👑",
-    items: [
-      "이 세계의 진정한 용사",
-      "무한한 가능성의 모험가",
-      "운명의 아르카나",
-      "차원을 넘어선 여행자",
-      "서핑 아라드",
-    ],
+    keywords: ["칭호", "용사", "모험가", "아르카나", "여행자", "서핑", "마스터", "영웅", "전설"],
+    typeFilter: (type: string) => type === "칭호",
   },
   {
     category: "크리쳐",
     emoji: "🐉",
-    items: [
-      "정령왕 에키드나",
-      "빛의 수호자 아이리스",
-      "화염의 정령왕",
-      "신성한 백호",
-      "얼음 여왕 프레이야",
-    ],
+    keywords: ["크리쳐", "정령", "수호자", "백호", "여왕", "드래곤", "펫"],
+    typeFilter: (type: string) => type === "크리쳐",
   },
   {
     category: "오라",
     emoji: "✨",
-    items: [
-      "그랜드 마스터 계약",
-      "차원 행운의 오라",
-      "빛나는 영광의 오라",
-      "심연의 힘 오라",
-      "대자연의 숨결 오라",
-    ],
+    keywords: ["오라", "계약", "상자"],
+    typeFilter: (type: string, name: string) =>
+      type.includes("오라") || name.includes("오라") || name.includes("계약"),
   },
   {
     category: "마법부여 카드",
     emoji: "🃏",
-    items: [
-      "적아 울라드 카드",
-      "광휘의 소울",
-      "에픽 소울 결정",
-      "태초 소울 결정",
-      "유니크 소울 결정",
-    ],
+    keywords: ["카드"],
+    typeFilter: (type: string, name: string) =>
+      type === "카드" || name.includes("카드"),
   },
 ];
 
-async function fetchLowestPrice(itemName: string): Promise<{
-  itemName: string;
-  itemId: string;
-  itemRarity: string;
-  lowestPrice: number;
-  auctionCount: number;
-} | null> {
+function removeOutliers(prices: number[]): number[] {
+  if (prices.length < 3) return prices;
+  const sorted = [...prices].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const upperBound = median * 3;
+  const lowerBound = median * 0.2;
+  return prices.filter(p => p >= lowerBound && p <= upperBound);
+}
+
+async function fetchSoldForKeyword(keyword: string): Promise<any[]> {
   try {
-    // 먼저 match로 정확 검색
-    let { data, ok } = await neopleGet("/df/auction", {
-      itemName,
-      wordType: "match",
-      limit: "10",
+    const { data, ok } = await neopleGet("/df/auction-sold", {
+      itemName: keyword,
+      wordType: "full",
+      limit: "100",
     });
-
-    let rows = ok && data.rows ? data.rows : [];
-
-    // match 결과 없으면 full로 재시도 후 이름 필터
-    if (rows.length === 0) {
-      ({ data, ok } = await neopleGet("/df/auction", {
-        itemName,
-        wordType: "full",
-        limit: "50",
-      }));
-      rows = ok && data.rows ? data.rows.filter((r: any) => r.itemName === itemName) : [];
-    }
-
-    if (rows.length === 0) return null;
-
-    // 최저가 순 정렬
-    rows.sort((a: any, b: any) => (a.unitPrice || 0) - (b.unitPrice || 0));
-
-    return {
-      itemName: rows[0].itemName,
-      itemId: rows[0].itemId || "",
-      itemRarity: rows[0].itemRarity || "",
-      lowestPrice: rows[0].unitPrice || 0,
-      auctionCount: rows.length,
-    };
+    return ok && data.rows ? data.rows : [];
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -107,16 +65,74 @@ export async function GET() {
 
     const results = [];
 
-    for (const cat of BIS_DATA) {
-      // 카테고리 내 아이템 5개씩 병렬 호출
-      const itemResults = await Promise.all(
-        cat.items.map((name) => fetchLowestPrice(name))
+    for (const cat of CATEGORIES) {
+      let allRows: any[] = [];
+      for (let i = 0; i < cat.keywords.length; i += 3) {
+        const batch = cat.keywords.slice(i, i + 3);
+        const batchResults = await Promise.all(
+          batch.map((kw) => fetchSoldForKeyword(kw))
+        );
+        allRows = allRows.concat(batchResults.flat());
+      }
+
+      const filtered = allRows.filter((row) =>
+        cat.typeFilter(row.itemType || "", row.itemName || "")
       );
+
+      const itemMap = new Map<
+        string,
+        {
+          itemName: string;
+          itemId: string;
+          itemRarity: string;
+          prices: number[];
+          tradeCount: number;
+        }
+      >();
+
+      for (const row of filtered) {
+        const name = row.itemName;
+        if (!name || !row.unitPrice) continue;
+
+        const existing = itemMap.get(name);
+        if (existing) {
+          existing.prices.push(row.unitPrice);
+          existing.tradeCount += row.count || 1;
+        } else {
+          itemMap.set(name, {
+            itemName: name,
+            itemId: row.itemId || "",
+            itemRarity: row.itemRarity || "",
+            prices: [row.unitPrice],
+            tradeCount: row.count || 1,
+          });
+        }
+      }
+
+      const ranked = [...itemMap.values()]
+        .map((item) => {
+          const cleaned = removeOutliers(item.prices);
+          const avgPrice =
+            cleaned.length > 0
+              ? Math.round(cleaned.reduce((a, b) => a + b, 0) / cleaned.length)
+              : 0;
+          return {
+            itemName: item.itemName,
+            itemId: item.itemId,
+            itemRarity: item.itemRarity,
+            avgPrice,
+            tradeCount: item.tradeCount,
+            dataPoints: item.prices.length,
+          };
+        })
+        .filter((item) => item.avgPrice > 0 && item.dataPoints >= 1)
+        .sort((a, b) => b.avgPrice - a.avgPrice)
+        .slice(0, 3);
 
       results.push({
         category: cat.category,
         emoji: cat.emoji,
-        items: itemResults.filter(Boolean),
+        items: ranked,
       });
     }
 

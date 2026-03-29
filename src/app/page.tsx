@@ -214,7 +214,7 @@ function InsightPanel() {
 }
 
 /* ═══ 종결템 ═══ */
-interface BisItem { itemName: string; itemId: string; itemRarity: string; lowestPrice: number; auctionCount: number; }
+interface BisItem { itemName: string; itemId: string; itemRarity: string; avgPrice: number; tradeCount: number; dataPoints: number; }
 interface BisCategory { category: string; emoji: string; items: BisItem[]; }
 
 function BisPanel() {
@@ -233,7 +233,7 @@ function BisPanel() {
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Card>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>🏆 종결템 시세</h2>
-        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>칭호 · 크리쳐 · 오라 · 마법부여 카드의 실시간 경매장 최저가를 확인합니다</p>
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>칭호 · 크리쳐 · 오라 · 마법부여 카드의 실거래가 기준 Top 3을 보여줍니다 (이상치 자동 제거)</p>
       </Card>
 
       {loading && <SkeletonList count={8} />}
@@ -243,10 +243,11 @@ function BisPanel() {
           <div className="section-title" style={{ marginBottom: 10 }}>
             <span>{cat.emoji}</span> {cat.category}
           </div>
-          {cat.items.length === 0 && <p style={{ fontSize: 12, color: "var(--text-muted)", padding: "8px 0" }}>현재 경매장에 등록된 매물이 없습니다</p>}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
-            {cat.items.map((item) => (
-              <div key={item.itemName} className="card" style={{ padding: "14px 16px" }}>
+          {cat.items.length === 0 && <p style={{ fontSize: 12, color: "var(--text-muted)", padding: "8px 0" }}>최근 거래 내역이 없습니다</p>}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+            {cat.items.map((item, idx) => (
+              <div key={item.itemName} className="card" style={{ padding: "14px 16px", borderColor: idx === 0 ? "#FFD70040" : undefined }}>
+                {idx === 0 && <div style={{ fontSize: 9, fontWeight: 700, color: "#B8860B", marginBottom: 6 }}>👑 1위</div>}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                   <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={32} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -256,10 +257,13 @@ function BisPanel() {
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
                   <div>
-                    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>최저가</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--color-accent-dim)" }}>{formatGold(item.lowestPrice)}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>평균 체결가</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--color-accent-dim)" }}>{formatGold(item.avgPrice)}</div>
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--text-muted)", textAlign: "right" }}>{item.auctionCount}건 등록</div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{item.tradeCount}건 거래</div>
+                    <div style={{ fontSize: 9, color: "var(--text-muted)" }}>{item.dataPoints}건 분석</div>
+                  </div>
                 </div>
               </div>
             ))}
