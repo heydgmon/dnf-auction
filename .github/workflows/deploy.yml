@@ -15,6 +15,7 @@ env:
   ECR_REPOSITORY: dnf-auction
   ECS_CLUSTER: dnf-auction-cluster
   ECS_SERVICE: dnf-auction-service-o4o5405p
+  CLOUDFRONT_DISTRIBUTION_ID: EJWV5XQH9FZSP
 
 jobs:
   deploy:
@@ -53,3 +54,10 @@ jobs:
             --cluster $ECS_CLUSTER \
             --service $ECS_SERVICE \
             --force-new-deployment
+
+      - name: Invalidate CloudFront cache
+        if: env.CLOUDFRONT_DISTRIBUTION_ID != ''
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
+            --paths "/*"
