@@ -7,52 +7,62 @@ let cache: { data: any; updatedAt: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000;
 
 /**
- * 던파 경매장 카테고리별 종결템 Top 3
+ * 던파 종결템 Top 3 — 완전 자동 분류
  *
- * 방식:
- * 1. 카테고리별 키워드로 /df/auction-sold (시세=실체결 데이터) 100건씩 수집
- * 2. 응답의 itemType 필드로 해당 카테고리만 정확히 필터
- * 3. 아이템 이름별 그룹핑 → 이상치 제거(중앙값 기준 3배 초과 제거)
- * 4. 이상치 제거 후 평균 체결가 기준 비싼 순 Top 3 선정
- * 5. Top 3 아이템의 경매장 현재 최저가도 별도 조회하여 함께 표시
+ * 핵심: itemType 필드"만" 사용하여 분류 (이름 기반 필터 없음)
+ *
+ * 1. 광범위한 1~2글자 키워드로 auction-sold 100건씩 대량 수집
+ * 2. 응답의 itemType 필드로만 카테고리 분류 (이름 무관)
+ * 3. 아이템별 그룹핑 → 이상치 제거 → 평균 체결가 Top 3
+ * 4. Top 3의 경매장 현재 최저가 조회
  */
 
+// ── 넓은 키워드 풀: 1~2글자로 최대한 많은 아이템을 수집 ──
+// auction-sold API는 itemName 필수이므로 다양한 짧은 키워드로 스윕
+const SWEEP_KEYWORDS = [
+  // 일반적으로 많이 걸리는 1글자
+  "의", "은", "된", "한", "를", "에", "로", "이",
+  // 카테고리 관련
+  "칭호", "크리쳐", "오라", "카드",
+  // 패키지/상자류 (고가 아이템 다수 포함)
+  "패키지", "상자", "계약",
+  // 자주 거래되는 키워드
+  "강화", "증폭", "소울", "골고", "토큰", "큐브",
+  "정수", "보주", "젤", "순례", "에픽",
+  // 크리쳐/칭호/오라에 흔한 단어
+  "운명", "전설", "영웅", "마스터", "서핑",
+  "알", "봉인", "선물", "교환", "제련",
+];
+
+/**
+ * 카테고리 정의 — itemType 필드만으로 분류
+ * 이름("카드", "오라" 등)은 절대 보지 않음
+ */
 const CATEGORIES = [
   {
     category: "칭호",
     emoji: "👑",
-    // 던파 경매장 칭호 탭 — 시세 API에서 itemType이 "칭호"인 것
-    keywords: ["칭호", "패키지", "용사", "모험가", "마스터", "영웅", "아르카나", "서핑", "여행자"],
-    typeFilter: (type: string) => type === "칭호",
+    typeMatch: (type: string) => type === "칭호",
   },
   {
     category: "크리쳐",
     emoji: "🐉",
-    // 던파 경매장 크리쳐 탭 — itemType이 "크리쳐"인 것
-    keywords: ["크리쳐", "패키지", "정령", "드래곤", "펫", "수호", "여왕"],
-    typeFilter: (type: string) => type === "크리쳐",
+    typeMatch: (type: string) => type === "크리쳐",
   },
   {
     category: "오라",
     emoji: "✨",
-    // 던파 경매장 오라 탭 — itemType에 "오라" 포함
-    keywords: ["오라", "계약", "패키지", "상자", "그랜드"],
-    typeFilter: (type: string) => type.includes("오라"),
+    typeMatch: (type: string) => type === "오라",
   },
   {
     category: "마법부여",
     emoji: "🃏",
-    // 던파 경매장 마법부여 탭 — itemType이 "카드" 또는 이름에 "카드" 포함
-    keywords: ["카드", "마법부여", "소울", "엠블렘"],
-    typeFilter: (type: string, name: string) =>
-      type === "카드" || type.includes("마법부여") || type.includes("엠블렘") ||
-      name.includes("카드"),
+    // 마법부여 카테고리: 카드, 엠블렘 등
+    typeMatch: (type: string) =>
+      type === "카드" || type === "엠블렘" || type.includes("마법부여"),
   },
 ];
 
-/**
- * 이상치 제거: 중앙값 기준 3배 초과 / 0.2배 미만 제거
- */
 function removeOutliers(prices: number[]): number[] {
   if (prices.length < 3) return prices;
   const sorted = [...prices].sort((a, b) => a - b);
@@ -60,9 +70,6 @@ function removeOutliers(prices: number[]): number[] {
   return prices.filter(p => p >= median * 0.2 && p <= median * 3);
 }
 
-/**
- * 시세(실체결) 데이터 100건 수집
- */
 async function fetchSold(keyword: string): Promise<any[]> {
   try {
     const { data, ok } = await neopleGet("/df/auction-sold", {
@@ -76,9 +83,6 @@ async function fetchSold(keyword: string): Promise<any[]> {
   }
 }
 
-/**
- * 경매장 현재 최저가 조회
- */
 async function fetchCurrentLowest(itemName: string): Promise<number | null> {
   try {
     const { data, ok } = await neopleGet("/df/auction", {
@@ -100,25 +104,40 @@ export async function GET() {
       return NextResponse.json(cache.data);
     }
 
+    // ── Step 1: 광범위 키워드 스윕으로 대량 수집 (5개씩 배치) ──
+    let allRows: any[] = [];
+    const seen = new Set<string>(); // 중복 제거용 (soldDate+itemName+unitPrice)
+
+    for (let i = 0; i < SWEEP_KEYWORDS.length; i += 5) {
+      const batch = SWEEP_KEYWORDS.slice(i, i + 5);
+      const batchResults = await Promise.all(
+        batch.map((kw) => fetchSold(kw))
+      );
+      for (const rows of batchResults) {
+        for (const row of rows) {
+          const key = `${row.soldDate}_${row.itemName}_${row.unitPrice}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            allRows.push(row);
+          }
+        }
+      }
+    }
+
+    console.log(`[BIS] Total unique sold rows: ${allRows.length}`);
+
+    // ── Step 2~4: 카테고리별 분류 → 그룹핑 → 이상치 제거 → Top 3 ──
     const results = [];
 
     for (const cat of CATEGORIES) {
-      // ── Step 1: 키워드별로 시세 데이터 100건씩 수집 (3개씩 배치) ──
-      let allRows: any[] = [];
-      for (let i = 0; i < cat.keywords.length; i += 3) {
-        const batch = cat.keywords.slice(i, i + 3);
-        const batchResults = await Promise.all(
-          batch.map((kw) => fetchSold(kw))
-        );
-        allRows = allRows.concat(batchResults.flat());
-      }
-
-      // ── Step 2: itemType으로 해당 카테고리만 필터 ──
+      // itemType으로만 필터 (이름 무관)
       const filtered = allRows.filter((row) =>
-        cat.typeFilter(row.itemType || "", row.itemName || "")
+        cat.typeMatch(row.itemType || "")
       );
 
-      // ── Step 3: 아이템 이름별 그룹핑 ──
+      console.log(`[BIS] ${cat.category}: ${filtered.length} rows after type filter`);
+
+      // 아이템별 그룹핑
       const itemMap = new Map<string, {
         itemName: string;
         itemId: string;
@@ -146,7 +165,7 @@ export async function GET() {
         }
       }
 
-      // ── Step 4: 이상치 제거 → 평균 체결가 → 비싼 순 Top 3 ──
+      // 이상치 제거 → 평균 체결가 → 비싼 순 Top 3
       const ranked = [...itemMap.values()]
         .map((item) => {
           const cleaned = removeOutliers(item.prices);
@@ -166,7 +185,7 @@ export async function GET() {
         .sort((a, b) => b.avgPrice - a.avgPrice)
         .slice(0, 3);
 
-      // ── Step 5: Top 3 각각의 경매장 현재 최저가 조회 ──
+      // ── Step 5: 경매장 현재 최저가 조회 ──
       const withLowest = await Promise.all(
         ranked.map(async (item) => {
           const lowestPrice = await fetchCurrentLowest(item.itemName);
@@ -189,6 +208,7 @@ export async function GET() {
     cache = { data: result, updatedAt: Date.now() };
     return NextResponse.json(result);
   } catch (err: any) {
+    console.error("[BIS] error:", err.message);
     if (cache) return NextResponse.json(cache.data);
     return NextResponse.json({ categories: [], error: err.message });
   }
