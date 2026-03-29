@@ -1,59 +1,30 @@
 import { NextResponse } from "next/server";
 import { neopleGet } from "@/lib/neople";
+import { isSharedCacheValid, getSharedCache, getSharedBuildPromise } from "@/lib/auction-shared-cache";
 
 export const dynamic = "force-dynamic";
 
-let cache: { data: any; updatedAt: number } | null = null;
+let bisCache: { data: any; updatedAt: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000;
 
 /**
- * 종결템 Top 3 — 경매장 등록 아이템 기반 2단계
+ * 종결템 Top 3
  *
- * Step 1: /df/auction (경매장 등록 아이템) 광범위 수집
- *         → 현재 경매장에 실제로 올라와 있는 아이템 + itemType 확보
- *         → itemType으로 칭호/크리쳐/오라/카드 분류
- *         → 카테고리별 고유 아이템 이름 목록 확보
+ * 1. 공유 캐시(경매장 등록 아이템)에서 itemType으로 분류
+ *    → "칭호로 분류"된 아이템, "크리쳐로 분류"된 아이템 등
+ *    → 단어 검색이 아님, itemType 필드 기준
  *
- * Step 2: 카테고리별 아이템 이름으로 /df/auction-sold 시세 조회
- *         → 이상치 제거 → 평균 체결가 Top 3
- *         → 경매장 현재 최저가 조회
+ * 2. 분류된 아이템 이름으로 /df/auction-sold 시세 조회
+ *    → 이상치 제거 → 거래 규모(총액) Top 3
+ *
+ * 3. Top 3의 경매장 현재 최저가 조회
  */
 
-// ── 경매장 등록 아이템을 광범위하게 수집하기 위한 키워드 ──
-// /df/auction은 wordType=full로 1~2글자만 넣어도 최대 400건 반환
-// 다양한 글자를 넣어서 최대한 많은 아이템을 수집
-const AUCTION_SWEEP_CHARS = [
-  "의", "은", "된", "한", "를",
-  "상", "패", "알", "봉", "운",
-  "카", "오", "크", "칭", "마",
-  "드", "서", "전", "계", "영",
-];
-
-const CATEGORY_FILTERS: {
-  category: string;
-  emoji: string;
-  typeMatch: (type: string) => boolean;
-}[] = [
-  {
-    category: "칭호",
-    emoji: "👑",
-    typeMatch: (type) => type === "칭호",
-  },
-  {
-    category: "크리쳐",
-    emoji: "🐉",
-    typeMatch: (type) => type === "크리쳐",
-  },
-  {
-    category: "오라",
-    emoji: "✨",
-    typeMatch: (type) => type === "오라",
-  },
-  {
-    category: "마법부여",
-    emoji: "🃏",
-    typeMatch: (type) => type === "카드",
-  },
+const CATEGORIES = [
+  { category: "칭호",    emoji: "👑", typeMatch: (t: string) => t === "칭호" },
+  { category: "크리쳐",  emoji: "🐉", typeMatch: (t: string) => t === "크리쳐" },
+  { category: "오라",    emoji: "✨", typeMatch: (t: string) => t === "오라" },
+  { category: "마법부여", emoji: "🃏", typeMatch: (t: string) => t === "카드" || t === "엠블렘" || t.includes("마법부여") },
 ];
 
 function removeOutliers(prices: number[]): number[] {
@@ -63,20 +34,7 @@ function removeOutliers(prices: number[]): number[] {
   return prices.filter(p => p >= median * 0.2 && p <= median * 3);
 }
 
-async function fetchAuction(keyword: string): Promise<any[]> {
-  try {
-    const { data, ok } = await neopleGet("/df/auction", {
-      itemName: keyword,
-      wordType: "full",
-      limit: "400",
-    });
-    return ok && data.rows ? data.rows : [];
-  } catch {
-    return [];
-  }
-}
-
-async function fetchSoldForItem(itemName: string): Promise<any[]> {
+async function fetchSold(itemName: string): Promise<any[]> {
   try {
     const { data, ok } = await neopleGet("/df/auction-sold", {
       itemName,
@@ -107,113 +65,94 @@ async function fetchCurrentLowest(itemName: string): Promise<number | null> {
 
 export async function GET() {
   try {
-    if (cache && Date.now() - cache.updatedAt < CACHE_TTL) {
-      return NextResponse.json(cache.data);
+    if (bisCache && Date.now() - bisCache.updatedAt < CACHE_TTL) {
+      return NextResponse.json(bisCache.data);
     }
 
-    // ══ Step 1: 경매장 등록 아이템 광범위 수집 ══
-    // 다양한 키워드로 /df/auction을 호출하여
-    // 현재 경매장에 등록된 아이템의 이름 + itemType을 수집
-    const itemsByType = new Map<string, Set<string>>(); // itemType → Set<itemName>
+    // ── Step 1: 공유 캐시에서 itemType으로 분류 ──
+    if (!isSharedCacheValid()) {
+      await getSharedBuildPromise();
+    }
+    const shared = getSharedCache();
+    if (!shared || shared.allAuctionRows.length === 0) {
+      return NextResponse.json({ categories: [], error: "No auction data" });
+    }
 
-    for (let i = 0; i < AUCTION_SWEEP_CHARS.length; i += 5) {
-      const batch = AUCTION_SWEEP_CHARS.slice(i, i + 5);
-      const batchResults = await Promise.all(
-        batch.map((kw) => fetchAuction(kw))
-      );
-      for (const rows of batchResults) {
-        for (const row of rows) {
-          const type = row.itemType || "";
-          const name = row.itemName || "";
-          if (!type || !name) continue;
-          if (!itemsByType.has(type)) itemsByType.set(type, new Set());
-          itemsByType.get(type)!.add(name);
-        }
+    // itemType으로 카테고리별 고유 아이템 이름 추출
+    const typeToNames = new Map<string, Set<string>>();
+    for (const row of shared.allAuctionRows) {
+      const type = row.itemType || "";
+      const name = row.itemName || "";
+      if (!type || !name) continue;
+      if (!typeToNames.has(type)) typeToNames.set(type, new Set());
+      typeToNames.get(type)!.add(name);
+    }
+
+    // 디버그
+    for (const [type, names] of typeToNames) {
+      if (["칭호", "크리쳐", "오라", "카드"].includes(type)) {
+        console.log(`[BIS] itemType="${type}": ${names.size} items → ${[...names].slice(0, 5).join(", ")}...`);
       }
     }
 
-    // 디버그: 어떤 itemType들이 수집되었는지 로깅
-    for (const [type, names] of itemsByType) {
-      console.log(`[BIS] itemType="${type}": ${names.size} unique items`);
-    }
-
-    // ══ Step 2: 카테고리별 분류 → 시세 조회 → Top 3 ══
     const results = [];
 
-    for (const cat of CATEGORY_FILTERS) {
-      // itemType으로 해당 카테고리 아이템 이름 추출
-      let categoryItems: string[] = [];
-      for (const [type, names] of itemsByType) {
+    for (const cat of CATEGORIES) {
+      // itemType 기준으로 해당 카테고리 아이템 이름 수집
+      let categoryNames: string[] = [];
+      for (const [type, names] of typeToNames) {
         if (cat.typeMatch(type)) {
-          categoryItems = categoryItems.concat([...names]);
+          categoryNames = categoryNames.concat([...names]);
         }
       }
-      // 중복 제거
-      categoryItems = [...new Set(categoryItems)];
+      categoryNames = [...new Set(categoryNames)];
 
-      console.log(`[BIS] ${cat.category}: ${categoryItems.length} items found in auction`);
+      console.log(`[BIS] ${cat.category}: ${categoryNames.length} items classified`);
 
-      if (categoryItems.length === 0) {
+      if (categoryNames.length === 0) {
         results.push({ category: cat.category, emoji: cat.emoji, items: [] });
         continue;
       }
 
-      // 각 아이템의 시세 조회 (5개씩 배치)
-      const itemData = new Map<string, {
-        itemName: string;
-        itemId: string;
-        itemRarity: string;
-        prices: number[];
-        totalCount: number;
-      }>();
+      // ── Step 2: 시세(실체결) 조회 — 전부 동시 호출 ──
+      const soldResults = await Promise.all(
+        categoryNames.map(async (name) => ({
+          name,
+          rows: await fetchSold(name),
+        }))
+      );
 
-      for (let i = 0; i < categoryItems.length; i += 5) {
-        const batch = categoryItems.slice(i, i + 5);
-        const batchResults = await Promise.all(
-          batch.map(async (name) => ({
-            name,
-            rows: await fetchSoldForItem(name),
-          }))
-        );
-
-        for (const { name, rows } of batchResults) {
-          if (rows.length === 0) continue;
+      // 그룹핑 + 이상치 제거 + 거래 규모 순 정렬
+      const ranked = soldResults
+        .filter(({ rows }) => rows.length > 0)
+        .map(({ name, rows }) => {
           const prices = rows.map((r: any) => r.unitPrice).filter(Boolean);
-          if (prices.length === 0) continue;
+          if (prices.length === 0) return null;
 
-          itemData.set(name, {
-            itemName: name,
-            itemId: rows[0].itemId || "",
-            itemRarity: rows[0].itemRarity || "",
-            prices,
-            totalCount: rows.reduce((sum: number, r: any) => sum + (r.count || 1), 0),
-          });
-        }
-      }
-
-      // 이상치 제거 → 평균 체결가 → Top 3
-      const ranked = [...itemData.values()]
-        .map((item) => {
-          const cleaned = removeOutliers(item.prices);
+          const cleaned = removeOutliers(prices);
           const avgPrice = cleaned.length > 0
             ? Math.round(cleaned.reduce((a, b) => a + b, 0) / cleaned.length)
             : 0;
+          const totalValue = cleaned.reduce((a, b) => a + b, 0);
+          const totalCount = rows.reduce((sum: number, r: any) => sum + (r.count || 1), 0);
+
           return {
-            itemName: item.itemName,
-            itemId: item.itemId,
-            itemRarity: item.itemRarity,
+            itemName: name,
+            itemId: rows[0].itemId || "",
+            itemRarity: rows[0].itemRarity || "",
             avgPrice,
-            tradeCount: item.totalCount,
-            dataPoints: item.prices.length,
+            tradeCount: totalCount,
+            dataPoints: prices.length,
+            totalValue,
           };
         })
-        .filter((item) => item.avgPrice > 0)
-        .sort((a, b) => b.avgPrice - a.avgPrice)
+        .filter(Boolean)
+        .sort((a: any, b: any) => b.totalValue - a.totalValue)
         .slice(0, 3);
 
-      // 경매장 현재 최저가
+      // ── Step 3: 경매장 현재 최저가 ──
       const withLowest = await Promise.all(
-        ranked.map(async (item) => {
+        ranked.map(async (item: any) => {
           const lowestPrice = await fetchCurrentLowest(item.itemName);
           return { ...item, lowestPrice };
         })
@@ -231,11 +170,11 @@ export async function GET() {
       updatedAt: new Date().toISOString(),
     };
 
-    cache = { data: result, updatedAt: Date.now() };
+    bisCache = { data: result, updatedAt: Date.now() };
     return NextResponse.json(result);
   } catch (err: any) {
     console.error("[BIS] error:", err.message);
-    if (cache) return NextResponse.json(cache.data);
+    if (bisCache) return NextResponse.json(bisCache.data);
     return NextResponse.json({ categories: [], error: err.message });
   }
 }
