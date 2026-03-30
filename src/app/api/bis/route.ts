@@ -8,21 +8,27 @@ let bisCache: { data: any; updatedAt: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000;
 
 // ── 하드코딩 아이템 목록 ──
-// shared cache 키워드로 잡히지 않는 칭호/오라/마법부여 아이템을 직접 지정
-const HARDCODED_ITEMS: Record<string, string[]> = {
+// searchKeyword : API 검색에 쓸 키워드 (wordType: "full" — 포함 검색)
+// displayName   : 실제 표시할 이름 (결과 필터링 기준, itemName.includes(displayName))
+interface HardcodedItem {
+  searchKeyword: string; // API 호출 시 itemName 파라미터
+  displayName: string;   // 결과 필터링 및 카드 표시용
+}
+
+const HARDCODED_ITEMS: Record<string, HardcodedItem[]> = {
   "칭호": [
-    "프로스트의 전설 플래티넘",
-    "군자의 사계 플래티넘",
+    { searchKeyword: "프로스트의 전설 플래티넘", displayName: "프로스트의 전설 플래티넘" },
+    { searchKeyword: "군자의 사계 플래티넘",     displayName: "군자의 사계 플래티넘" },
   ],
   "오라": [
-    "카드 오브 파툼 오라 상자",
-    "고결한 영혼의 잔상 오라 상자",
-    "초월한 폭풍의 기세 오라 상자",
+    { searchKeyword: "카드 오브 파툼 오라 상자",       displayName: "카드 오브 파툼 오라 상자" },
+    { searchKeyword: "고결한 영혼의 잔상 오라 상자",   displayName: "고결한 영혼의 잔상 오라 상자" },
+    { searchKeyword: "초월한 폭풍의 기세 오라 상자",   displayName: "초월한 폭풍의 기세 오라 상자" },
   ],
   "마법부여": [
-    "조율의 감시자 오르테르 카드",
-    "거짓의 베리디쿠스 카드",
-    "해방된 비올렌티아 카드",
+    { searchKeyword: "조율의 감시자 오르테르 카드", displayName: "조율의 감시자 오르테르 카드" },
+    { searchKeyword: "거짓의 베리디쿠스 카드",     displayName: "거짓의 베리디쿠스 카드" },
+    { searchKeyword: "해방된 비올렌티아 카드",     displayName: "해방된 비올렌티아 카드" },
   ],
 };
 
@@ -48,6 +54,15 @@ async function fetchSold(itemName: string): Promise<any[]> {
   } catch { return []; }
 }
 
+// wordType: "full" (포함 검색) — "[75Lv]" 등 접미사가 붙은 아이템 대응
+async function fetchSoldByKeyword(searchKeyword: string, displayName: string): Promise<any[]> {
+  try {
+    const { data, ok } = await neopleGet("/df/auction-sold", { itemName: searchKeyword, wordType: "full", limit: "100" });
+    if (!ok || !data.rows) return [];
+    return data.rows.filter((r: any) => (r.itemName as string).includes(displayName));
+  } catch { return []; }
+}
+
 async function fetchCurrentLowest(itemName: string): Promise<number | null> {
   try {
     const { data, ok } = await neopleGet("/df/auction", { itemName, wordType: "match", limit: "5" });
@@ -57,22 +72,38 @@ async function fetchCurrentLowest(itemName: string): Promise<number | null> {
   } catch { return null; }
 }
 
+// wordType: "full" (포함 검색) — "[75Lv]" 등 접미사가 붙은 아이템 대응
+async function fetchCurrentLowestByKeyword(searchKeyword: string, displayName: string): Promise<number | null> {
+  try {
+    const { data, ok } = await neopleGet("/df/auction", { itemName: searchKeyword, wordType: "full", limit: "20" });
+    if (!ok || !data.rows || data.rows.length === 0) return null;
+    const prices = data.rows
+      .filter((r: any) => (r.itemName as string).includes(displayName))
+      .map((r: any) => r.unitPrice)
+      .filter(Boolean);
+    return prices.length > 0 ? Math.min(...prices) : null;
+  } catch { return null; }
+}
+
 // 하드코딩 아이템 목록을 크리쳐와 동일한 방식으로 처리
-async function resolveHardcodedItems(names: string[]): Promise<any[]> {
+async function resolveHardcodedItems(items: HardcodedItem[]): Promise<any[]> {
   const soldResults = await Promise.all(
-    names.map(async (name) => ({ name, rows: await fetchSold(name) }))
+    items.map(async ({ searchKeyword, displayName }) => ({
+      displayName,
+      rows: await fetchSoldByKeyword(searchKeyword, displayName),
+    }))
   );
 
   const ranked = await Promise.all(
-    soldResults.map(async ({ name, rows }) => {
-      const lowestPrice = await fetchCurrentLowest(name);
+    soldResults.map(async ({ displayName, rows }) => {
+      const lowestPrice = await fetchCurrentLowestByKeyword(displayName, displayName);
 
       if (rows.length > 0) {
         // 시세 데이터 있음 → 실체결 기준
         const prices = rows.map((r: any) => r.unitPrice).filter(Boolean);
         if (prices.length === 0) {
           return {
-            itemName: name,
+            itemName: displayName,
             itemId: rows[0]?.itemId || "",
             itemRarity: rows[0]?.itemRarity || "",
             avgPrice: lowestPrice ?? 0,
@@ -88,7 +119,7 @@ async function resolveHardcodedItems(names: string[]): Promise<any[]> {
           : 0;
         const totalValue = cleaned.reduce((a, b) => a + b, 0);
         return {
-          itemName: name,
+          itemName: displayName,
           itemId: rows[0].itemId || "",
           itemRarity: rows[0].itemRarity || "",
           avgPrice,
@@ -100,7 +131,7 @@ async function resolveHardcodedItems(names: string[]): Promise<any[]> {
       } else {
         // 시세 데이터 없음 → 경매장 최저가만
         return {
-          itemName: name,
+          itemName: displayName,
           itemId: "",
           itemRarity: "",
           avgPrice: lowestPrice ?? 0,
