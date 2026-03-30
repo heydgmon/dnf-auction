@@ -221,6 +221,7 @@ function PriceChart({
 
   useEffect(() => {
     let destroyed = false;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
     const tryBuild = () => {
       const Chart = (window as any).Chart;
@@ -238,7 +239,6 @@ function PriceChart({
       if (!ctx) return;
 
       if (mode === "overview" && insightItems.length > 0) {
-        // 멀티라인: 인기 아이템 6개 동시 표시
         const datasets = buildOverviewDatasets(insightItems);
         chartRef.current = new Chart(ctx, {
           type: "line",
@@ -251,8 +251,8 @@ function PriceChart({
               legend: { display: false },
               tooltip: {
                 callbacks: {
-                  label: (ctx: any) =>
-                    ` ${ctx.dataset.label}: ${Number(ctx.parsed.y).toLocaleString()}G`,
+                  label: (c: any) =>
+                    ` ${c.dataset.label}: ${Number(c.parsed.y).toLocaleString()}G`,
                 },
               },
             },
@@ -265,9 +265,7 @@ function PriceChart({
               y: {
                 position: "right",
                 ticks: {
-                  color: tickColor,
-                  font: { size: 10 },
-                  maxTicksLimit: 5,
+                  color: tickColor, font: { size: 10 }, maxTicksLimit: 5,
                   callback: (v: any) => {
                     if (v >= 100_000_000) return (v / 100_000_000).toFixed(1) + "억";
                     if (v >= 10_000) return Math.round(v / 10_000) + "만";
@@ -280,8 +278,7 @@ function PriceChart({
           },
         });
       } else if (mode === "search" && chartData.length > 0) {
-        // 싱글: 검색한 아이템 가격선 + 거래량 바
-        const labels = chartData.map(d => d.date.slice(5)); // MM-DD
+        const labels = chartData.map(d => d.date.slice(5));
         const priceData = chartData.map(d => d.avg);
         const volData = chartData.map(d => d.count);
         const isUp = priceData.length >= 2 && priceData[priceData.length - 1] >= priceData[0];
@@ -324,10 +321,10 @@ function PriceChart({
               legend: { display: false },
               tooltip: {
                 callbacks: {
-                  label: (ctx: any) => {
-                    if (ctx.dataset.label === "평균가")
-                      return ` 평균가: ${Number(ctx.parsed.y).toLocaleString()}G`;
-                    return ` 거래량: ${ctx.parsed.y}건`;
+                  label: (c: any) => {
+                    if (c.dataset.label === "평균가")
+                      return ` 평균가: ${Number(c.parsed.y).toLocaleString()}G`;
+                    return ` 거래량: ${c.parsed.y}건`;
                   },
                 },
               },
@@ -340,9 +337,7 @@ function PriceChart({
               y: {
                 position: "right",
                 ticks: {
-                  color: tickColor,
-                  font: { size: 10 },
-                  maxTicksLimit: 5,
+                  color: tickColor, font: { size: 10 }, maxTicksLimit: 5,
                   callback: (v: any) => {
                     if (v >= 100_000_000) return (v / 100_000_000).toFixed(1) + "억";
                     if (v >= 10_000) return Math.round(v / 10_000) + "만";
@@ -351,38 +346,42 @@ function PriceChart({
                 },
                 grid: { color: gridColor },
               },
-              y2: {
-                display: false,
-              },
+              y2: { display: false },
             },
           },
         });
       }
     };
 
-    // Chart.js 스크립트가 없으면 주입
-    if (!(window as any).Chart) {
-      const existing = document.getElementById("chartjs-cdn");
-      if (!existing) {
-        const s = document.createElement("script");
-        s.id = "chartjs-cdn";
-        s.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
-        s.onload = () => { if (!destroyed) tryBuild(); };
-        document.head.appendChild(s);
-      } else {
-        // 이미 로딩 중 → polling
-        const interval = setInterval(() => {
-          if ((window as any).Chart) { clearInterval(interval); tryBuild(); }
-        }, 100);
-        return () => { destroyed = true; clearInterval(interval); chartRef.current?.destroy(); };
-      }
-    } else {
+    const startPolling = () => {
+      pollInterval = setInterval(() => {
+        if ((window as any).Chart) {
+          if (pollInterval) clearInterval(pollInterval);
+          if (!destroyed) tryBuild();
+        }
+      }, 100);
+    };
+
+    if ((window as any).Chart) {
       tryBuild();
+    } else if (document.getElementById("chartjs-cdn")) {
+      // 스크립트 태그는 있지만 아직 로딩 중 → polling
+      startPolling();
+    } else {
+      // 최초 주입
+      const s = document.createElement("script");
+      s.id = "chartjs-cdn";
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
+      s.onload = () => { if (!destroyed) tryBuild(); };
+      s.onerror = () => console.error("[Chart.js] CDN 로드 실패");
+      document.head.appendChild(s);
     }
 
     return () => {
       destroyed = true;
+      if (pollInterval) clearInterval(pollInterval);
       chartRef.current?.destroy();
+      chartRef.current = null;
     };
   }, [mode, chartData, insightItems]);
 
@@ -427,7 +426,7 @@ function AuctionSoldPanel() {
     addRecent(query.trim());
     try {
       const res = await fetch(
-        `/api/auction-sold?itemName=${encodeURIComponent(query.trim())}&wordType=full&limit=400`
+        `/api/auction-sold?itemName=${encodeURIComponent(query.trim())}&wordType=match&limit=400`
       );
       const data: AuctionSoldResponse = await res.json();
       if (!res.ok || data.error) {
@@ -479,7 +478,7 @@ function AuctionSoldPanel() {
     setChartLoading(true);
     try {
       const res = await fetch(
-        `/api/auction-sold?itemName=${encodeURIComponent(name)}&wordType=full&limit=400`
+        `/api/auction-sold?itemName=${encodeURIComponent(name)}&wordType=match&limit=400`
       );
       const data: AuctionSoldResponse = await res.json();
       const rows = filterByItemName([...(data.rows || [])], name);
@@ -586,10 +585,15 @@ function AuctionSoldPanel() {
         {chartMode === "search" && chartData.length > 0 && (() => {
           const prices = chartData.map(d => d.avg);
           const latest = prices[prices.length - 1];
-          const first = prices[0];
-          const change = first > 0 ? Math.round(((latest - first) / first) * 10000) / 100 : 0;
-          const isUp = change >= 0;
           const totalVol = chartData.reduce((s, d) => s + d.count, 0);
+          // 기간변동: 전반부 평균 vs 후반부 평균 (단일 날짜여도 의미있는 값)
+          const half = Math.ceil(prices.length / 2);
+          const recentAvg = prices.slice(-half).reduce((s, v) => s + v, 0) / half;
+          const olderAvg = prices.slice(0, prices.length - half).reduce((s, v) => s + v, 0) / Math.max(prices.length - half, 1);
+          const change = olderAvg > 0
+            ? Math.round(((recentAvg - olderAvg) / olderAvg) * 10000) / 100
+            : 0;
+          const isUp = change >= 0;
           return (
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               {[
