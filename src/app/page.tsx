@@ -164,25 +164,25 @@ function AuctionRow({ item }: { item: AuctionItem }) { const [open, setOpen] = u
 
 // 날짜별 집계 헬퍼
 function buildChartData(rows: AuctionSoldItem[]) {
-  const dateMap = new Map<string, { prices: number[]; count: number }>();
+  const dateMap = new Map<string, { prices: number[]; txCount: number }>();
   for (const r of rows) {
     const d = (r.soldDate || "").slice(0, 10);
     if (!d) continue;
-    const e = dateMap.get(d) || { prices: [], count: 0 };
+    const e = dateMap.get(d) || { prices: [], txCount: 0 };
     if (r.unitPrice) e.prices.push(r.unitPrice);
-    e.count += r.count || 1;
+    e.txCount += 1; // count(수량)가 아닌 거래 건수로 집계
     dateMap.set(d, e);
   }
   return [...dateMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, { prices, count }]) => {
+    .map(([date, { prices, txCount }]) => {
       const sorted = [...prices].sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
       const cleaned = prices.filter(p => p >= median * 0.2 && p <= median * 3);
       const avg = cleaned.length > 0
         ? Math.round(cleaned.reduce((s, v) => s + v, 0) / cleaned.length)
         : (prices[0] ?? 0);
-      return { date, avg, count };
+      return { date, avg, count: txCount };
     });
 }
 
@@ -425,8 +425,9 @@ function AuctionSoldPanel() {
     setSearched(true);
     addRecent(query.trim());
     try {
+      // limit=100: 거래 많은 아이템도 여러 날짜 데이터 확보 (400이면 당일만 채워짐)
       const res = await fetch(
-        `/api/auction-sold?itemName=${encodeURIComponent(query.trim())}&wordType=match&limit=400`
+        `/api/auction-sold?itemName=${encodeURIComponent(query.trim())}&wordType=match&limit=100`
       );
       const data: AuctionSoldResponse = await res.json();
       if (!res.ok || data.error) {
@@ -440,7 +441,6 @@ function AuctionSoldPanel() {
         filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
         setResults(filtered);
 
-        // 차트 데이터 갱신
         const cd = buildChartData(filtered);
         setChartData(cd);
         setChartMode(cd.length > 0 ? "search" : "overview");
@@ -478,7 +478,7 @@ function AuctionSoldPanel() {
     setChartLoading(true);
     try {
       const res = await fetch(
-        `/api/auction-sold?itemName=${encodeURIComponent(name)}&wordType=match&limit=400`
+        `/api/auction-sold?itemName=${encodeURIComponent(name)}&wordType=match&limit=100`
       );
       const data: AuctionSoldResponse = await res.json();
       const rows = filterByItemName([...(data.rows || [])], name);
@@ -599,7 +599,7 @@ function AuctionSoldPanel() {
               {[
                 { label: "최근 평균가", value: `${latest.toLocaleString()}G` },
                 { label: "기간 변동", value: `${isUp ? "+" : ""}${change}%`, color: isUp ? "#E24B4A" : "#378ADD" },
-                { label: "총 거래량", value: `${totalVol}건` },
+                { label: "거래 건수", value: `${totalVol}건` },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ flex: 1, background: "var(--bg-primary)", borderRadius: 8, padding: "8px 10px" }}>
                   <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
@@ -652,7 +652,6 @@ function AuctionSoldPanel() {
     </div>
   );
 }
-
 /* ═══ 아이템 DB ═══ */
 function ItemSearchPanel() { const [query, setQuery] = useState(""); const [results, setResults] = useState<any[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [searched, setSearched] = useState(false); const [popular, setPopular] = useState<PopularItem[]>([]); const [detail, setDetail] = useState<any>(null); useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []); const search = useCallback(async () => { if (!query.trim()) return; setLoading(true); setError(""); setSearched(true); setDetail(null); addRecent(query.trim()); try { const res = await fetch(`/api/items?itemName=${encodeURIComponent(query.trim())}&wordType=full&limit=30`); const data = await res.json(); if (!res.ok || data.error) { setError(data.error?.message || "오류"); setResults([]); } else { setResults(extractRows(data)); } } catch { setError("서버 연결에 실패했습니다."); setResults([]); } finally { setLoading(false); } }, [query]); const loadDetail = useCallback(async (id: string) => { if (detail?.itemId === id) { setDetail(null); return; } try { const r = await fetch(`/api/item-detail?itemId=${id}`); setDetail(await r.json()); } catch {} }, [detail]); return (<div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}><Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>던파 전체 아이템의 상세 스펙을 조회합니다.</p><AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 닳아버린 순례의 증표, 광휘의 소울...)" buttonLabel="아이템 검색" /></Card>{!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}<ErrorMsg msg={error} />{loading && <SkeletonList count={5} />}{!loading && results.length > 0 && (<div><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{results.length}건</p><div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{results.map((item: any) => (<div key={item.itemId}><div className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12, cursor: "pointer" }} onClick={() => loadDetail(item.itemId)}><ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>Lv.{item.itemAvailableLevel} · {item.itemType}</div></div><span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 500, background: `${getRarityColor(item.itemRarity)}10`, color: getRarityColor(item.itemRarity) }}>{item.itemRarity}</span></div>{detail?.itemId === item.itemId && (<div className="card animate-slide-up" style={{ marginTop: 4, padding: "14px 16px", borderColor: "var(--color-primary)", background: "var(--color-surface)" }}><div style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}><span style={{ fontWeight: 600 }}>{detail.itemName}</span>{detail.itemExplain && <div style={{ color: "var(--text-secondary)" }} dangerouslySetInnerHTML={{ __html: detail.itemExplain.replace(/\n/g, "<br/>") }} />}{detail.itemFlavorText && <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>{detail.itemFlavorText}</div>}{detail.setItemName && <div style={{ fontSize: 10, color: "var(--color-primary)" }}>세트: {detail.setItemName}</div>}</div></div>)}</div>))}</div></div>)}{!loading && searched && !results.length && !error && <Empty msg="검색 결과가 없습니다." />}</div>); }
 
