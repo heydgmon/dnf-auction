@@ -162,30 +162,6 @@ function AuctionRow({ item }: { item: AuctionItem }) { const [open, setOpen] = u
 
 /* ═══ 시세 ═══ */
 
-// 날짜별 집계 헬퍼
-function buildChartData(rows: AuctionSoldItem[]) {
-  const dateMap = new Map<string, { prices: number[]; txCount: number }>();
-  for (const r of rows) {
-    const d = (r.soldDate || "").slice(0, 10);
-    if (!d) continue;
-    const e = dateMap.get(d) || { prices: [], txCount: 0 };
-    if (r.unitPrice) e.prices.push(r.unitPrice);
-    e.txCount += 1; // count(수량)가 아닌 거래 건수로 집계
-    dateMap.set(d, e);
-  }
-  return [...dateMap.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, { prices, txCount }]) => {
-      const sorted = [...prices].sort((a, b) => a - b);
-      const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
-      const cleaned = prices.filter(p => p >= median * 0.2 && p <= median * 3);
-      const avg = cleaned.length > 0
-        ? Math.round(cleaned.reduce((s, v) => s + v, 0) / cleaned.length)
-        : (prices[0] ?? 0);
-      return { date, avg, count: txCount };
-    });
-}
-
 // 인사이트 데이터 → 차트용 멀티 데이터셋
 function buildOverviewDatasets(items: any[]) {
   const COLORS = [
@@ -417,6 +393,29 @@ function AuctionSoldPanel() {
       .catch(() => {});
   }, []);
 
+  const fetchHistory = useCallback(async (name: string) => {
+    setChartLoading(true);
+    try {
+      const res = await fetch(
+        `/api/auction-sold-history?itemName=${encodeURIComponent(name)}&wordType=match`
+      );
+      const data = await res.json();
+      const cd: { date: string; avg: number; count: number }[] = data.chartRows || [];
+      setChartData(cd);
+      setChartMode(cd.length > 0 ? "search" : "overview");
+      setChartTitle(
+        cd.length > 0
+          ? `"${name}" 시세 추이 (${cd.length}일)`
+          : "인기 아이템 시세 흐름"
+      );
+      return data.recentRows || [];
+    } catch {
+      return [];
+    } finally {
+      setChartLoading(false);
+    }
+  }, []);
+
   const search = useCallback(async () => {
     if (!query.trim()) return;
     setLoading(true);
@@ -425,30 +424,14 @@ function AuctionSoldPanel() {
     setSearched(true);
     addRecent(query.trim());
     try {
-      // limit=100: 거래 많은 아이템도 여러 날짜 데이터 확보 (400이면 당일만 채워짐)
-      const res = await fetch(
-        `/api/auction-sold?itemName=${encodeURIComponent(query.trim())}&wordType=match&limit=100`
+      const recentRows = await fetchHistory(query.trim());
+      const filtered = filterByItemName(recentRows, query.trim());
+      filtered.sort((a: AuctionSoldItem, b: AuctionSoldItem) =>
+        (b.soldDate || "").localeCompare(a.soldDate || "")
       );
-      const data: AuctionSoldResponse = await res.json();
-      if (!res.ok || data.error) {
-        setError(data.error?.message || "오류");
-        setResults([]);
-        setChartMode("overview");
-        setChartTitle("인기 아이템 시세 흐름");
-      } else {
-        const allRows = [...(data.rows || [])];
-        const filtered = filterByItemName(allRows, query.trim());
-        filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
-        setResults(filtered);
-
-        const cd = buildChartData(filtered);
-        setChartData(cd);
-        setChartMode(cd.length > 0 ? "search" : "overview");
-        setChartTitle(
-          cd.length > 0
-            ? `"${query.trim()}" 시세 추이 (${cd.length}일)`
-            : "인기 아이템 시세 흐름"
-        );
+      setResults(filtered);
+      if (filtered.length === 0 && recentRows.length === 0) {
+        setError("거래 내역이 없습니다.");
       }
     } catch {
       setError("서버 연결에 실패했습니다.");
@@ -457,9 +440,8 @@ function AuctionSoldPanel() {
       setChartTitle("인기 아이템 시세 흐름");
     } finally {
       setLoading(false);
-      setChartLoading(false);
     }
-  }, [query]);
+  }, [query, fetchHistory]);
 
   // 검색어 지워지면 overview로 복귀
   useEffect(() => {
@@ -475,21 +457,8 @@ function AuctionSoldPanel() {
   // 인기 아이템 칩 클릭 시 해당 아이템 차트 미리보기
   const handleChipClick = useCallback(async (name: string) => {
     setQuery(name);
-    setChartLoading(true);
-    try {
-      const res = await fetch(
-        `/api/auction-sold?itemName=${encodeURIComponent(name)}&wordType=match&limit=100`
-      );
-      const data: AuctionSoldResponse = await res.json();
-      const rows = filterByItemName([...(data.rows || [])], name);
-      const cd = buildChartData(rows);
-      setChartData(cd);
-      setChartMode(cd.length > 0 ? "search" : "overview");
-      setChartTitle(`"${name}" 시세 추이 (${cd.length}일)`);
-    } catch { /* 무시 */ } finally {
-      setChartLoading(false);
-    }
-  }, []);
+    await fetchHistory(name);
+  }, [fetchHistory]);
 
   const COLORS = ["#E24B4A","#378ADD","#1D9E75","#EF9F27","#7F77DD","#D85A30"];
 
