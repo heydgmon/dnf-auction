@@ -14,13 +14,13 @@ type Page = "home" | "alerts" | "auction" | "auction-sold" | "insight" | "items"
 
 const NAV_ITEMS: { id: Page; label: string }[] = [
   { id: "home", label: "메인" },
+  { id: "bis", label: "종결템" },
+  { id: "insight", label: "인사이트" },
   { id: "alerts", label: "알림" },
   { id: "auction", label: "경매장" },
   { id: "auction-sold", label: "시세" },
-  { id: "insight", label: "인사이트" },
   { id: "items", label: "아이템 DB" },
   { id: "setitems", label: "세트 아이템" },
-  { id: "bis", label: "종결템" },
 ];
 
 function itemImageUrl(id: string) { return `https://img-api.neople.co.kr/df/items/${id}`; }
