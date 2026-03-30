@@ -396,9 +396,17 @@ function AuctionSoldPanel() {
   const fetchHistory = useCallback(async (name: string) => {
     setChartLoading(true);
     try {
-      const res = await fetch(
-        `/api/auction-sold-history?itemName=${encodeURIComponent(name)}&wordType=match`
+      // 인사이트 데이터에 해당 아이템이 있으면 함께 전달 (7일치 보장)
+      const matched = insightItems.find((it: any) =>
+        it.itemName === name || it.itemName.includes(name) || name.includes(it.itemName)
       );
+
+      let url = `/api/auction-sold-history?itemName=${encodeURIComponent(name)}&wordType=match`;
+      if (matched?.trades?.length > 0) {
+        url += `&insightData=${encodeURIComponent(JSON.stringify(matched))}`;
+      }
+
+      const res = await fetch(url);
       const data = await res.json();
       const cd: { date: string; avg: number; count: number }[] = data.chartRows || [];
       setChartData(cd);
@@ -414,7 +422,7 @@ function AuctionSoldPanel() {
     } finally {
       setChartLoading(false);
     }
-  }, []);
+  }, [insightItems]);
 
   const search = useCallback(async () => {
     if (!query.trim()) return;

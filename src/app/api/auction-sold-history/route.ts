@@ -1,17 +1,21 @@
 // src/app/api/auction-sold-history/route.ts
 //
-// 차트용 7일치 시세 히스토리 수집 엔드포인트
-// Neople auction-sold API에는 날짜 범위 파라미터가 없으므로
-// 서버에서 7회 병렬 호출 후 날짜별로 각 100건씩 샘플링해서 합칩니다.
+// 차트용 7일치 시세 히스토리
 //
-// GET /api/auction-sold-history?itemName=무색+큐브+조각&wordType=match
+// 전략:
+// 1. 프론트에서 인사이트 데이터(insightData)를 전달하면 → 그것을 차트에 사용 (이미 7일치)
+// 2. 없으면 → auction-sold 단일 호출 (거래 적은 아이템은 이것만으로도 여러 날짜 커버)
+//
+// [API 한계 설명]
+// Neople auction-sold에는 커서/오프셋이 없어서 동일 요청을 N번 해도
+// 항상 같은 최신 데이터만 반환됩니다.
+// 거래가 매우 많은 아이템(무색 큐브 조각 등)은 구조적으로 당일 데이터만 나옵니다.
 
 import { NextRequest, NextResponse } from "next/server";
 import { neopleGet } from "@/lib/neople";
 
 export const dynamic = "force-dynamic";
 
-// 이상치 제거
 function removeOutliers(prices: number[]): number[] {
   if (prices.length < 3) return prices;
   const sorted = [...prices].sort((a, b) => a - b);
@@ -23,44 +27,51 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const itemName = searchParams.get("itemName") || "";
   const wordType = searchParams.get("wordType") || "match";
+  const insightDataRaw = searchParams.get("insightData");
 
   if (!itemName) {
-    return NextResponse.json({ rows: [], error: "itemName required" }, { status: 400 });
+    return NextResponse.json({ chartRows: [], recentRows: [], error: "itemName required" }, { status: 400 });
   }
 
   try {
-    // 7회 병렬 호출 (limit=200씩) → 각 호출이 서로 다른 시간대 데이터를 포함할 가능성 있음
-    // Neople API는 최신순이므로 여러 번 호출해도 동일 데이터가 올 수 있음
-    // → 호출 수를 늘려서 더 많은 날짜를 커버하되, soldDate 기준으로 dedup
-    const CALLS = 7;
-    const PER_CALL = 200;
+    // ── 1. 인사이트 데이터가 있으면 그것을 차트에 사용 ──
+    if (insightDataRaw) {
+      try {
+        const insightItem = JSON.parse(decodeURIComponent(insightDataRaw));
+        if (insightItem?.trades?.length > 0) {
+          const chartRows = insightItem.trades.map((t: any) => ({
+            date: t.date,
+            avg: t.unitPrice,
+            count: t.count || 1,
+          }));
 
-    const results = await Promise.all(
-      Array.from({ length: CALLS }).map(() =>
-        neopleGet("/df/auction-sold", {
-          itemName,
-          wordType,
-          limit: String(PER_CALL),
-        }).then(({ data, ok }) => (ok && data.rows ? data.rows : []))
-          .catch(() => [])
-      )
-    );
+          // 리스트용 최신 거래는 별도로 100건 조회
+          const { data: soldData, ok: soldOk } = await neopleGet("/df/auction-sold", {
+            itemName,
+            wordType,
+            limit: "100",
+          });
+          const recentRows = soldOk && soldData.rows
+            ? (soldData.rows as any[]).filter(r => (r.itemName as string).includes(itemName))
+            : [];
 
-    // soldDate + unitPrice 기준 dedup (완전히 동일한 거래 중복 제거)
-    const seen = new Set<string>();
-    const allRows: any[] = [];
-    for (const rows of results) {
-      for (const r of rows) {
-        const key = `${r.soldDate}__${r.unitPrice}__${r.itemName}__${r.count}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          allRows.push(r);
+          return NextResponse.json({ chartRows, recentRows, source: "insight" });
         }
-      }
+      } catch {}
     }
 
-    // itemName 필터 (match 검색이라 다른 아이템이 섞일 수 있음)
-    const filtered = allRows.filter(r =>
+    // ── 2. Fallback: auction-sold 단일 호출 ──
+    const { data, ok } = await neopleGet("/df/auction-sold", {
+      itemName,
+      wordType,
+      limit: "400",
+    });
+
+    if (!ok || !data.rows) {
+      return NextResponse.json({ chartRows: [], recentRows: [] });
+    }
+
+    const filtered = (data.rows as any[]).filter(r =>
       (r.itemName as string).includes(itemName)
     );
 
@@ -75,14 +86,13 @@ export async function GET(request: NextRequest) {
       dateMap.set(d, e);
     }
 
-    // 오늘 기준 7일 범위만 유지, 날짜 오름차순 정렬
     const today = new Date();
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(today.getDate() - 6);
-    const cutoff = sevenDaysAgo.toISOString().slice(0, 10);
+    const cutoff = new Date(today);
+    cutoff.setDate(today.getDate() - 6);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
 
     const chartRows = [...dateMap.entries()]
-      .filter(([d]) => d >= cutoff)
+      .filter(([d]) => d >= cutoffStr)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, { prices, txCount }]) => {
         const cleaned = removeOutliers(prices);
@@ -92,12 +102,11 @@ export async function GET(request: NextRequest) {
         return { date, avg, count: txCount };
       });
 
-    // 최근 거래 리스트용 raw rows (날짜 내림차순, 최대 100건)
-    const recentRows = filtered
+    const recentRows = [...filtered]
       .sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""))
       .slice(0, 100);
 
-    return NextResponse.json({ chartRows, recentRows });
+    return NextResponse.json({ chartRows, recentRows, source: "auction-sold" });
   } catch (err: any) {
     return NextResponse.json({ chartRows: [], recentRows: [], error: err.message }, { status: 502 });
   }
