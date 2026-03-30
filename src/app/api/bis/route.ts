@@ -17,8 +17,8 @@ interface HardcodedItem {
 
 const HARDCODED_ITEMS: Record<string, HardcodedItem[]> = {
   "칭호": [
-    { searchKeyword: "프로스트의 전설 플래티넘", displayName: "프로스트의 전설 플래티넘" },
-    { searchKeyword: "군자의 사계 플래티넘",     displayName: "군자의 사계 플래티넘" },
+    { searchKeyword: "프로스트의 전설", displayName: "프로스트의 전설 플래티넘" },
+    { searchKeyword: "군자의 사계",     displayName: "군자의 사계 플래티넘" },
   ],
   "오라": [
     { searchKeyword: "카드 오브 파툼 오라 상자",       displayName: "카드 오브 파툼 오라 상자" },
@@ -54,13 +54,12 @@ async function fetchSold(itemName: string): Promise<any[]> {
   } catch { return []; }
 }
 
-// wordType: "match" (부분 일치) — "[75Lv]" 등 접미사가 붙은 아이템 대응
-// Neople API: match=부분일치(포함검색), full=완전일치
 async function fetchSoldByKeyword(searchKeyword: string, displayName: string): Promise<any[]> {
   try {
     const { data, ok } = await neopleGet("/df/auction-sold", { itemName: searchKeyword, wordType: "match", limit: "100" });
     if (!ok || !data.rows) return [];
-    return data.rows.filter((r: any) => (r.itemName as string).includes(displayName));
+    const filtered = data.rows.filter((r: any) => (r.itemName as string).includes(displayName));
+    return filtered.length > 0 ? filtered : data.rows;
   } catch { return []; }
 }
 
@@ -73,16 +72,13 @@ async function fetchCurrentLowest(itemName: string): Promise<number | null> {
   } catch { return null; }
 }
 
-// wordType: "match" (부분 일치) — "[75Lv]" 등 접미사가 붙은 아이템 대응
-// Neople API: match=부분일치(포함검색), full=완전일치
 async function fetchCurrentLowestByKeyword(searchKeyword: string, displayName: string): Promise<number | null> {
   try {
     const { data, ok } = await neopleGet("/df/auction", { itemName: searchKeyword, wordType: "match", limit: "20" });
     if (!ok || !data.rows || data.rows.length === 0) return null;
-    const prices = data.rows
-      .filter((r: any) => (r.itemName as string).includes(displayName))
-      .map((r: any) => r.unitPrice)
-      .filter(Boolean);
+    const filtered = data.rows.filter((r: any) => (r.itemName as string).includes(displayName));
+    const target = filtered.length > 0 ? filtered : data.rows;
+    const prices = target.map((r: any) => r.unitPrice).filter(Boolean);
     return prices.length > 0 ? Math.min(...prices) : null;
   } catch { return null; }
 }
@@ -99,7 +95,6 @@ async function resolveHardcodedItems(items: HardcodedItem[]): Promise<any[]> {
 
   const ranked = await Promise.all(
     soldResults.map(async ({ searchKeyword, displayName, rows }) => {
-      // ★ searchKeyword로 검색하고 displayName으로 필터링 (버그 수정)
       const lowestPrice = await fetchCurrentLowestByKeyword(searchKeyword, displayName);
 
       if (rows.length > 0) {
