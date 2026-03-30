@@ -54,10 +54,11 @@ async function fetchSold(itemName: string): Promise<any[]> {
   } catch { return []; }
 }
 
-// wordType: "full" (포함 검색) — "[75Lv]" 등 접미사가 붙은 아이템 대응
+// wordType: "match" (부분 일치) — "[75Lv]" 등 접미사가 붙은 아이템 대응
+// Neople API: match=부분일치(포함검색), full=완전일치
 async function fetchSoldByKeyword(searchKeyword: string, displayName: string): Promise<any[]> {
   try {
-    const { data, ok } = await neopleGet("/df/auction-sold", { itemName: searchKeyword, wordType: "full", limit: "100" });
+    const { data, ok } = await neopleGet("/df/auction-sold", { itemName: searchKeyword, wordType: "match", limit: "100" });
     if (!ok || !data.rows) return [];
     return data.rows.filter((r: any) => (r.itemName as string).includes(displayName));
   } catch { return []; }
@@ -72,10 +73,11 @@ async function fetchCurrentLowest(itemName: string): Promise<number | null> {
   } catch { return null; }
 }
 
-// wordType: "full" (포함 검색) — "[75Lv]" 등 접미사가 붙은 아이템 대응
+// wordType: "match" (부분 일치) — "[75Lv]" 등 접미사가 붙은 아이템 대응
+// Neople API: match=부분일치(포함검색), full=완전일치
 async function fetchCurrentLowestByKeyword(searchKeyword: string, displayName: string): Promise<number | null> {
   try {
-    const { data, ok } = await neopleGet("/df/auction", { itemName: searchKeyword, wordType: "full", limit: "20" });
+    const { data, ok } = await neopleGet("/df/auction", { itemName: searchKeyword, wordType: "match", limit: "20" });
     if (!ok || !data.rows || data.rows.length === 0) return null;
     const prices = data.rows
       .filter((r: any) => (r.itemName as string).includes(displayName))
@@ -136,7 +138,7 @@ async function resolveHardcodedItems(items: HardcodedItem[]): Promise<any[]> {
         let itemId = "";
         let itemRarity = "";
         try {
-          const { data: aData, ok: aOk } = await neopleGet("/df/auction", { itemName: searchKeyword, wordType: "full", limit: "5" });
+          const { data: aData, ok: aOk } = await neopleGet("/df/auction", { itemName: searchKeyword, wordType: "match", limit: "5" });
           if (aOk && aData.rows) {
             const match = aData.rows.find((r: any) => (r.itemName as string).includes(displayName));
             if (match) {
