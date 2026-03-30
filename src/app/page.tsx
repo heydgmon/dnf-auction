@@ -221,11 +221,6 @@ function PriceChart({
 
   useEffect(() => {
     let destroyed = false;
-    import("https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" as any)
-      .catch(() => {})
-      .finally(() => {
-        // Chart.js를 window.Chart로 로드 (스크립트 태그 방식 fallback)
-      });
 
     const tryBuild = () => {
       const Chart = (window as any).Chart;
