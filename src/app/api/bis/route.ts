@@ -17,9 +17,9 @@ interface HardcodedItem {
 
 const HARDCODED_ITEMS: Record<string, HardcodedItem[]> = {
   "칭호": [
-    { searchKeyword: "운명이 담긴 책",    displayName: "운명이 담긴 책" },
-    { searchKeyword: "프로스트의 전설",   displayName: "프로스트의 전설 플래티넘" },
-    { searchKeyword: "군자의 사계",       displayName: "군자의 사계 플래티넘" },
+    { searchKeyword: "운명이 담긴 책[75Lv]",    displayName: "운명이 담긴 책[75Lv]" },
+    { searchKeyword: "프로스트의 전설 플래티넘[100Lv]",   displayName: "프로스트의 전설 플래티넘[100Lv]" },
+    { searchKeyword: "군자의 사계 플래티넘[30Lv]",       displayName: "군자의 사계 플래티넘[30Lv]" },
   ],
   "오라": [
     { searchKeyword: "카드 오브 파툼 오라 상자",       displayName: "카드 오브 파툼 오라 상자" },
