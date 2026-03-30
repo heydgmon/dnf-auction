@@ -89,14 +89,16 @@ async function fetchCurrentLowestByKeyword(searchKeyword: string, displayName: s
 async function resolveHardcodedItems(items: HardcodedItem[]): Promise<any[]> {
   const soldResults = await Promise.all(
     items.map(async ({ searchKeyword, displayName }) => ({
+      searchKeyword,
       displayName,
       rows: await fetchSoldByKeyword(searchKeyword, displayName),
     }))
   );
 
   const ranked = await Promise.all(
-    soldResults.map(async ({ displayName, rows }) => {
-      const lowestPrice = await fetchCurrentLowestByKeyword(displayName, displayName);
+    soldResults.map(async ({ searchKeyword, displayName, rows }) => {
+      // ★ searchKeyword로 검색하고 displayName으로 필터링 (버그 수정)
+      const lowestPrice = await fetchCurrentLowestByKeyword(searchKeyword, displayName);
 
       if (rows.length > 0) {
         // 시세 데이터 있음 → 실체결 기준
@@ -130,10 +132,24 @@ async function resolveHardcodedItems(items: HardcodedItem[]): Promise<any[]> {
         };
       } else {
         // 시세 데이터 없음 → 경매장 최저가만
+        // itemId/itemRarity는 경매장 API에서 fallback으로 조회
+        let itemId = "";
+        let itemRarity = "";
+        try {
+          const { data: aData, ok: aOk } = await neopleGet("/df/auction", { itemName: searchKeyword, wordType: "full", limit: "5" });
+          if (aOk && aData.rows) {
+            const match = aData.rows.find((r: any) => (r.itemName as string).includes(displayName));
+            if (match) {
+              itemId = match.itemId || "";
+              itemRarity = match.itemRarity || "";
+            }
+          }
+        } catch { /* itemId/itemRarity 없어도 무방 */ }
+
         return {
           itemName: displayName,
-          itemId: "",
-          itemRarity: "",
+          itemId,
+          itemRarity,
           avgPrice: lowestPrice ?? 0,
           tradeCount: 0,
           totalValue: lowestPrice ?? 0,
