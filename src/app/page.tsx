@@ -155,8 +155,504 @@ function AuctionSearchPanel() { const [query, setQuery] = useState(""); const [r
 
 function AuctionRow({ item }: { item: AuctionItem }) { const [open, setOpen] = useState(false); const upgrade = (item as any).upgrade; const upgradeMax = (item as any).upgradeMax; return (<div className="card" style={{ padding: "12px 16px", cursor: "pointer", borderColor: open ? "var(--color-primary)" : undefined, transition: "border-color 0.15s" }} onClick={() => setOpen(!open)}><div style={{ display: "flex", alignItems: "center", gap: 12 }}><ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={36} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.reinforce > 0 && <span style={{ color: "var(--color-accent-dim)" }}>+{item.reinforce} </span>}{item.itemName}{item.refine > 0 && <span style={{ marginLeft: 4, fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "var(--color-primary-light)", color: "var(--color-primary)" }}>제련 {item.refine}</span>}{upgrade != null && upgradeMax != null && upgradeMax > 0 && <span style={{ marginLeft: 4, fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "var(--color-accent-light)", color: "var(--color-accent)" }}>{upgrade}성/{upgradeMax}성</span>}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2, display: "flex", gap: 8 }}><span>Lv.{item.itemAvailableLevel}</span><span style={{ color: getRarityColor(item.itemRarity) }}>{item.itemRarity}</span><span>{item.itemType}</span>{item.count > 1 && <span>x{item.count}</span>}</div></div><div style={{ textAlign: "right", flexShrink: 0 }}><div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-accent-dim)" }}>{formatGold(item.unitPrice)}</div><div style={{ fontSize: 10, color: "var(--text-muted)" }}>개당</div></div></div>{open && (<div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border-color)", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}><InfoCell label="총 가격" value={formatFullGold(item.currentPrice)} /><InfoCell label="평균 시세" value={formatFullGold(item.averagePrice)} /><InfoCell label="등록일" value={formatDate(item.regDate)} /><InfoCell label="만료일" value={formatDate(item.expireDate)} />{item.amplificationName && <InfoCell label="증폭" value={item.amplificationName} />}{upgrade != null && <InfoCell label="업그레이드" value={`${upgrade} / ${upgradeMax}`} />}</div>)}</div>); }
 
+// =====================================================================
+// page.tsx의 /* ═══ 시세 ═══ */ 섹션 전체를 아래 코드로 교체하세요.
+// Chart.js는 CDN 없이 useEffect로 동적 import 합니다.
+// =====================================================================
+
 /* ═══ 시세 ═══ */
-function AuctionSoldPanel() { const [query, setQuery] = useState(""); const [results, setResults] = useState<AuctionSoldItem[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [searched, setSearched] = useState(false); const [popular, setPopular] = useState<PopularItem[]>([]); useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []); const search = useCallback(async () => { if (!query.trim()) return; setLoading(true); setError(""); setSearched(true); addRecent(query.trim()); try { const res = await fetch(`/api/auction-sold?itemName=${encodeURIComponent(query.trim())}&wordType=full&limit=400`); const data: AuctionSoldResponse = await res.json(); if (!res.ok || data.error) { setError(data.error?.message || "오류"); setResults([]); } else { const allRows = [...(data.rows || [])]; const filtered = filterByItemName(allRows, query.trim()); filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || "")); setResults(filtered); } } catch { setError("서버 연결에 실패했습니다."); setResults([]); } finally { setLoading(false); } }, [query]); return (<div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}><Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>최근 거래 완료된 아이템의 실제 거래 가격을 확인합니다.</p><AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)" buttonLabel="시세 검색" /></Card>{!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}<ErrorMsg msg={error} />{loading && <SkeletonList count={5} />}{!loading && results.length > 0 && (<div><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>최근 거래 {results.length}건</p><div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{results.map((item, i) => (<div key={i} className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12 }}><ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} /><div style={{ flex: 1, minWidth: 0, fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.reinforce > 0 && <span style={{ color: "var(--color-accent-dim)" }}>+{item.reinforce} </span>}{item.itemName}</div><span style={{ fontSize: 10, color: "var(--text-muted)" }}>{item.count > 1 ? `x${item.count}` : ""}</span><span style={{ fontWeight: 600, color: "var(--color-accent-dim)", width: 64, textAlign: "right" }}>{formatGold(item.unitPrice)}</span><span className="hidden sm:block" style={{ fontSize: 10, color: "var(--text-muted)", width: 100, textAlign: "right" }}>{formatDate(item.soldDate)}</span></div>))}</div></div>)}{!loading && searched && !results.length && !error && <Empty msg="거래 내역이 없습니다." />}</div>); }
+
+// 날짜별 집계 헬퍼
+function buildChartData(rows: AuctionSoldItem[]) {
+  const dateMap = new Map<string, { prices: number[]; count: number }>();
+  for (const r of rows) {
+    const d = (r.soldDate || "").slice(0, 10);
+    if (!d) continue;
+    const e = dateMap.get(d) || { prices: [], count: 0 };
+    if (r.unitPrice) e.prices.push(r.unitPrice);
+    e.count += r.count || 1;
+    dateMap.set(d, e);
+  }
+  return [...dateMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, { prices, count }]) => {
+      const sorted = [...prices].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+      const cleaned = prices.filter(p => p >= median * 0.2 && p <= median * 3);
+      const avg = cleaned.length > 0
+        ? Math.round(cleaned.reduce((s, v) => s + v, 0) / cleaned.length)
+        : (prices[0] ?? 0);
+      return { date, avg, count };
+    });
+}
+
+// 인사이트 데이터 → 차트용 멀티 데이터셋
+function buildOverviewDatasets(items: any[]) {
+  const COLORS = [
+    "#E24B4A", "#378ADD", "#1D9E75", "#EF9F27",
+    "#7F77DD", "#D85A30", "#D4537E", "#639922",
+  ];
+  return items.slice(0, 6).map((item, i) => ({
+    label: item.itemName,
+    data: item.trades.map((t: any) => ({ x: t.date, y: t.unitPrice })),
+    borderColor: COLORS[i % COLORS.length],
+    backgroundColor: COLORS[i % COLORS.length] + "18",
+    borderWidth: 1.5,
+    pointRadius: 2,
+    tension: 0.35,
+    fill: false,
+    yAxisID: "y",
+  }));
+}
+
+function PriceChart({
+  chartData,
+  mode,
+  itemName,
+  insightItems,
+}: {
+  chartData: { date: string; avg: number; count: number }[];
+  mode: "overview" | "search";
+  itemName: string;
+  insightItems: any[];
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const chartRef = useRef<any>(null);
+
+  useEffect(() => {
+    let destroyed = false;
+    import("https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" as any)
+      .catch(() => {})
+      .finally(() => {
+        // Chart.js를 window.Chart로 로드 (스크립트 태그 방식 fallback)
+      });
+
+    const tryBuild = () => {
+      const Chart = (window as any).Chart;
+      if (!Chart || !canvasRef.current || destroyed) return;
+
+      if (chartRef.current) {
+        chartRef.current.destroy();
+        chartRef.current = null;
+      }
+
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+      const tickColor = isDark ? "#666" : "#bbb";
+      const ctx = canvasRef.current.getContext("2d");
+      if (!ctx) return;
+
+      if (mode === "overview" && insightItems.length > 0) {
+        // 멀티라인: 인기 아이템 6개 동시 표시
+        const datasets = buildOverviewDatasets(insightItems);
+        chartRef.current = new Chart(ctx, {
+          type: "line",
+          data: { datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx: any) =>
+                    ` ${ctx.dataset.label}: ${Number(ctx.parsed.y).toLocaleString()}G`,
+                },
+              },
+            },
+            scales: {
+              x: {
+                type: "category",
+                ticks: { color: tickColor, font: { size: 10 }, maxTicksLimit: 7 },
+                grid: { color: gridColor },
+              },
+              y: {
+                position: "right",
+                ticks: {
+                  color: tickColor,
+                  font: { size: 10 },
+                  maxTicksLimit: 5,
+                  callback: (v: any) => {
+                    if (v >= 100_000_000) return (v / 100_000_000).toFixed(1) + "억";
+                    if (v >= 10_000) return Math.round(v / 10_000) + "만";
+                    return v.toLocaleString();
+                  },
+                },
+                grid: { color: gridColor },
+              },
+            },
+          },
+        });
+      } else if (mode === "search" && chartData.length > 0) {
+        // 싱글: 검색한 아이템 가격선 + 거래량 바
+        const labels = chartData.map(d => d.date.slice(5)); // MM-DD
+        const priceData = chartData.map(d => d.avg);
+        const volData = chartData.map(d => d.count);
+        const isUp = priceData.length >= 2 && priceData[priceData.length - 1] >= priceData[0];
+        const lineColor = isUp ? "#E24B4A" : "#378ADD";
+
+        chartRef.current = new Chart(ctx, {
+          data: {
+            labels,
+            datasets: [
+              {
+                type: "line",
+                label: "평균가",
+                data: priceData,
+                borderColor: lineColor,
+                backgroundColor: lineColor + "12",
+                borderWidth: 2,
+                pointRadius: 3,
+                pointBackgroundColor: lineColor,
+                tension: 0.35,
+                fill: true,
+                yAxisID: "y",
+                order: 1,
+              },
+              {
+                type: "bar",
+                label: "거래량",
+                data: volData,
+                backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
+                borderRadius: 3,
+                yAxisID: "y2",
+                order: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx: any) => {
+                    if (ctx.dataset.label === "평균가")
+                      return ` 평균가: ${Number(ctx.parsed.y).toLocaleString()}G`;
+                    return ` 거래량: ${ctx.parsed.y}건`;
+                  },
+                },
+              },
+            },
+            scales: {
+              x: {
+                ticks: { color: tickColor, font: { size: 10 } },
+                grid: { color: gridColor },
+              },
+              y: {
+                position: "right",
+                ticks: {
+                  color: tickColor,
+                  font: { size: 10 },
+                  maxTicksLimit: 5,
+                  callback: (v: any) => {
+                    if (v >= 100_000_000) return (v / 100_000_000).toFixed(1) + "억";
+                    if (v >= 10_000) return Math.round(v / 10_000) + "만";
+                    return v.toLocaleString();
+                  },
+                },
+                grid: { color: gridColor },
+              },
+              y2: {
+                display: false,
+              },
+            },
+          },
+        });
+      }
+    };
+
+    // Chart.js 스크립트가 없으면 주입
+    if (!(window as any).Chart) {
+      const existing = document.getElementById("chartjs-cdn");
+      if (!existing) {
+        const s = document.createElement("script");
+        s.id = "chartjs-cdn";
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
+        s.onload = () => { if (!destroyed) tryBuild(); };
+        document.head.appendChild(s);
+      } else {
+        // 이미 로딩 중 → polling
+        const interval = setInterval(() => {
+          if ((window as any).Chart) { clearInterval(interval); tryBuild(); }
+        }, 100);
+        return () => { destroyed = true; clearInterval(interval); chartRef.current?.destroy(); };
+      }
+    } else {
+      tryBuild();
+    }
+
+    return () => {
+      destroyed = true;
+      chartRef.current?.destroy();
+    };
+  }, [mode, chartData, insightItems]);
+
+  return (
+    <div style={{ position: "relative", width: "100%", height: 220 }}>
+      <canvas ref={canvasRef} />
+    </div>
+  );
+}
+
+function AuctionSoldPanel() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<AuctionSoldItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [searched, setSearched] = useState(false);
+  const [popular, setPopular] = useState<PopularItem[]>([]);
+  const [insightItems, setInsightItems] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<{ date: string; avg: number; count: number }[]>([]);
+  const [chartMode, setChartMode] = useState<"overview" | "search">("overview");
+  const [chartTitle, setChartTitle] = useState("인기 아이템 시세 흐름");
+
+  // 인사이트 데이터 로드 (기본 차트용)
+  useEffect(() => {
+    fetch("/api/market-insight")
+      .then(r => r.json())
+      .then(d => setInsightItems(d.items || []))
+      .catch(() => {});
+    fetch("/api/popular-items")
+      .then(r => r.json())
+      .then(d => setPopular(d.items || []))
+      .catch(() => {});
+  }, []);
+
+  const search = useCallback(async () => {
+    if (!query.trim()) return;
+    setLoading(true);
+    setChartLoading(true);
+    setError("");
+    setSearched(true);
+    addRecent(query.trim());
+    try {
+      const res = await fetch(
+        `/api/auction-sold?itemName=${encodeURIComponent(query.trim())}&wordType=full&limit=400`
+      );
+      const data: AuctionSoldResponse = await res.json();
+      if (!res.ok || data.error) {
+        setError(data.error?.message || "오류");
+        setResults([]);
+        setChartMode("overview");
+        setChartTitle("인기 아이템 시세 흐름");
+      } else {
+        const allRows = [...(data.rows || [])];
+        const filtered = filterByItemName(allRows, query.trim());
+        filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
+        setResults(filtered);
+
+        // 차트 데이터 갱신
+        const cd = buildChartData(filtered);
+        setChartData(cd);
+        setChartMode(cd.length > 0 ? "search" : "overview");
+        setChartTitle(
+          cd.length > 0
+            ? `"${query.trim()}" 시세 추이 (${cd.length}일)`
+            : "인기 아이템 시세 흐름"
+        );
+      }
+    } catch {
+      setError("서버 연결에 실패했습니다.");
+      setResults([]);
+      setChartMode("overview");
+      setChartTitle("인기 아이템 시세 흐름");
+    } finally {
+      setLoading(false);
+      setChartLoading(false);
+    }
+  }, [query]);
+
+  // 검색어 지워지면 overview로 복귀
+  useEffect(() => {
+    if (!query.trim() && searched) {
+      setSearched(false);
+      setResults([]);
+      setChartMode("overview");
+      setChartTitle("인기 아이템 시세 흐름");
+      setChartData([]);
+    }
+  }, [query]);
+
+  // 인기 아이템 칩 클릭 시 해당 아이템 차트 미리보기
+  const handleChipClick = useCallback(async (name: string) => {
+    setQuery(name);
+    setChartLoading(true);
+    try {
+      const res = await fetch(
+        `/api/auction-sold?itemName=${encodeURIComponent(name)}&wordType=full&limit=400`
+      );
+      const data: AuctionSoldResponse = await res.json();
+      const rows = filterByItemName([...(data.rows || [])], name);
+      const cd = buildChartData(rows);
+      setChartData(cd);
+      setChartMode(cd.length > 0 ? "search" : "overview");
+      setChartTitle(`"${name}" 시세 추이 (${cd.length}일)`);
+    } catch { /* 무시 */ } finally {
+      setChartLoading(false);
+    }
+  }, []);
+
+  const COLORS = ["#E24B4A","#378ADD","#1D9E75","#EF9F27","#7F77DD","#D85A30"];
+
+  return (
+    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* 검색창 */}
+      <Card>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
+          최근 거래 완료된 아이템의 실제 거래 가격을 확인합니다.
+        </p>
+        <AutocompleteSearch
+          query={query}
+          setQuery={setQuery}
+          onSearch={search}
+          loading={loading}
+          placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)"
+          buttonLabel="시세 검색"
+        />
+      </Card>
+
+      {/* ── 시세 차트 ── */}
+      <Card>
+        {/* 차트 헤더 */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+              {chartTitle}
+            </div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
+              {chartMode === "overview"
+                ? "실체결 기준 · 인기 아이템 시세 흐름"
+                : "실체결 기준 · 일별 평균가 + 거래량"}
+            </div>
+          </div>
+          {chartMode === "search" && (
+            <button
+              onClick={() => {
+                setChartMode("overview");
+                setChartTitle("인기 아이템 시세 흐름");
+                setChartData([]);
+              }}
+              style={{
+                fontSize: 10, padding: "4px 10px", borderRadius: 20,
+                border: "0.5px solid var(--border-color)",
+                background: "var(--bg-primary)", color: "var(--text-muted)",
+                cursor: "pointer",
+              }}
+            >
+              전체 보기
+            </button>
+          )}
+        </div>
+
+        {/* 차트 본체 */}
+        {chartLoading ? (
+          <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>차트 로딩 중...</div>
+          </div>
+        ) : (
+          <PriceChart
+            chartData={chartData}
+            mode={chartMode}
+            itemName={query}
+            insightItems={insightItems}
+          />
+        )}
+
+        {/* overview 범례 */}
+        {chartMode === "overview" && insightItems.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+            {insightItems.slice(0, 6).map((item, i) => (
+              <button
+                key={item.itemName}
+                onClick={() => handleChipClick(item.itemName)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  fontSize: 10, padding: "3px 8px", borderRadius: 20,
+                  border: `0.5px solid ${COLORS[i]}40`,
+                  background: `${COLORS[i]}12`,
+                  color: COLORS[i],
+                  cursor: "pointer",
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS[i], display: "inline-block" }} />
+                {item.itemName}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* search 요약 통계 */}
+        {chartMode === "search" && chartData.length > 0 && (() => {
+          const prices = chartData.map(d => d.avg);
+          const latest = prices[prices.length - 1];
+          const first = prices[0];
+          const change = first > 0 ? Math.round(((latest - first) / first) * 10000) / 100 : 0;
+          const isUp = change >= 0;
+          const totalVol = chartData.reduce((s, d) => s + d.count, 0);
+          return (
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              {[
+                { label: "최근 평균가", value: `${latest.toLocaleString()}G` },
+                { label: "기간 변동", value: `${isUp ? "+" : ""}${change}%`, color: isUp ? "#E24B4A" : "#378ADD" },
+                { label: "총 거래량", value: `${totalVol}건` },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ flex: 1, background: "var(--bg-primary)", borderRadius: 8, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: color || "var(--text-primary)" }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </Card>
+
+      {/* 검색 전: 인기 아이템 칩 */}
+      {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
+
+      <ErrorMsg msg={error} />
+      {loading && <SkeletonList count={5} />}
+
+      {/* 거래 내역 리스트 */}
+      {!loading && results.length > 0 && (
+        <div>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
+            최근 거래 {results.length}건
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {results.map((item, i) => (
+              <div
+                key={i}
+                className="card"
+                style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12 }}
+              >
+                <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} />
+                <div style={{ flex: 1, minWidth: 0, fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {item.reinforce > 0 && <span style={{ color: "var(--color-accent-dim)" }}>+{item.reinforce} </span>}
+                  {item.itemName}
+                </div>
+                <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{item.count > 1 ? `x${item.count}` : ""}</span>
+                <span style={{ fontWeight: 600, color: "var(--color-accent-dim)", width: 64, textAlign: "right" }}>
+                  {formatGold(item.unitPrice)}
+                </span>
+                <span className="hidden sm:block" style={{ fontSize: 10, color: "var(--text-muted)", width: 100, textAlign: "right" }}>
+                  {formatDate(item.soldDate)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && searched && !results.length && !error && <Empty msg="거래 내역이 없습니다." />}
+    </div>
+  );
+}
 
 /* ═══ 아이템 DB ═══ */
 function ItemSearchPanel() { const [query, setQuery] = useState(""); const [results, setResults] = useState<any[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [searched, setSearched] = useState(false); const [popular, setPopular] = useState<PopularItem[]>([]); const [detail, setDetail] = useState<any>(null); useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []); const search = useCallback(async () => { if (!query.trim()) return; setLoading(true); setError(""); setSearched(true); setDetail(null); addRecent(query.trim()); try { const res = await fetch(`/api/items?itemName=${encodeURIComponent(query.trim())}&wordType=full&limit=30`); const data = await res.json(); if (!res.ok || data.error) { setError(data.error?.message || "오류"); setResults([]); } else { setResults(extractRows(data)); } } catch { setError("서버 연결에 실패했습니다."); setResults([]); } finally { setLoading(false); } }, [query]); const loadDetail = useCallback(async (id: string) => { if (detail?.itemId === id) { setDetail(null); return; } try { const r = await fetch(`/api/item-detail?itemId=${id}`); setDetail(await r.json()); } catch {} }, [detail]); return (<div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}><Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>던파 전체 아이템의 상세 스펙을 조회합니다.</p><AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 닳아버린 순례의 증표, 광휘의 소울...)" buttonLabel="아이템 검색" /></Card>{!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}<ErrorMsg msg={error} />{loading && <SkeletonList count={5} />}{!loading && results.length > 0 && (<div><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{results.length}건</p><div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{results.map((item: any) => (<div key={item.itemId}><div className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12, cursor: "pointer" }} onClick={() => loadDetail(item.itemId)}><ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>Lv.{item.itemAvailableLevel} · {item.itemType}</div></div><span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 500, background: `${getRarityColor(item.itemRarity)}10`, color: getRarityColor(item.itemRarity) }}>{item.itemRarity}</span></div>{detail?.itemId === item.itemId && (<div className="card animate-slide-up" style={{ marginTop: 4, padding: "14px 16px", borderColor: "var(--color-primary)", background: "var(--color-surface)" }}><div style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}><span style={{ fontWeight: 600 }}>{detail.itemName}</span>{detail.itemExplain && <div style={{ color: "var(--text-secondary)" }} dangerouslySetInnerHTML={{ __html: detail.itemExplain.replace(/\n/g, "<br/>") }} />}{detail.itemFlavorText && <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>{detail.itemFlavorText}</div>}{detail.setItemName && <div style={{ fontSize: 10, color: "var(--color-primary)" }}>세트: {detail.setItemName}</div>}</div></div>)}</div>))}</div></div>)}{!loading && searched && !results.length && !error && <Empty msg="검색 결과가 없습니다." />}</div>); }
