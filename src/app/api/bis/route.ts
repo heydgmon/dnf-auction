@@ -7,6 +7,25 @@ export const dynamic = "force-dynamic";
 let bisCache: { data: any; updatedAt: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000;
 
+// ── 하드코딩 아이템 목록 ──
+// shared cache 키워드로 잡히지 않는 칭호/오라/마법부여 아이템을 직접 지정
+const HARDCODED_ITEMS: Record<string, string[]> = {
+  "칭호": [
+    "프로스트의 전설 플래티넘",
+    "군자의 사계 플래티넘",
+  ],
+  "오라": [
+    "카드 오브 파툼 오라 상자",
+    "고결한 영혼의 잔상 오라 상자",
+    "초월한 폭풍의 기세 오라 상자",
+  ],
+  "마법부여": [
+    "조율의 감시자 오르테르 카드",
+    "거짓의 베리디쿠스 카드",
+    "해방된 비올렌티아 카드",
+  ],
+};
+
 const CATEGORIES = [
   { category: "칭호",    emoji: "👑", typeMatch: (t: string) => t === "칭호" },
   { category: "크리쳐",  emoji: "🐉", typeMatch: (t: string) => t === "크리쳐" },
@@ -36,6 +55,71 @@ async function fetchCurrentLowest(itemName: string): Promise<number | null> {
     const prices = data.rows.map((r: any) => r.unitPrice).filter(Boolean);
     return prices.length > 0 ? Math.min(...prices) : null;
   } catch { return null; }
+}
+
+// 하드코딩 아이템 목록을 크리쳐와 동일한 방식으로 처리
+async function resolveHardcodedItems(names: string[]): Promise<any[]> {
+  const soldResults = await Promise.all(
+    names.map(async (name) => ({ name, rows: await fetchSold(name) }))
+  );
+
+  const ranked = await Promise.all(
+    soldResults.map(async ({ name, rows }) => {
+      const lowestPrice = await fetchCurrentLowest(name);
+
+      if (rows.length > 0) {
+        // 시세 데이터 있음 → 실체결 기준
+        const prices = rows.map((r: any) => r.unitPrice).filter(Boolean);
+        if (prices.length === 0) {
+          return {
+            itemName: name,
+            itemId: rows[0]?.itemId || "",
+            itemRarity: rows[0]?.itemRarity || "",
+            avgPrice: lowestPrice ?? 0,
+            tradeCount: 0,
+            totalValue: lowestPrice ?? 0,
+            lowestPrice,
+            source: "경매장",
+          };
+        }
+        const cleaned = removeOutliers(prices);
+        const avgPrice = cleaned.length > 0
+          ? Math.round(cleaned.reduce((a, b) => a + b, 0) / cleaned.length)
+          : 0;
+        const totalValue = cleaned.reduce((a, b) => a + b, 0);
+        return {
+          itemName: name,
+          itemId: rows[0].itemId || "",
+          itemRarity: rows[0].itemRarity || "",
+          avgPrice,
+          tradeCount: rows.reduce((s: number, r: any) => s + (r.count || 1), 0),
+          totalValue,
+          lowestPrice,
+          source: "시세",
+        };
+      } else {
+        // 시세 데이터 없음 → 경매장 최저가만
+        return {
+          itemName: name,
+          itemId: "",
+          itemRarity: "",
+          avgPrice: lowestPrice ?? 0,
+          tradeCount: 0,
+          totalValue: lowestPrice ?? 0,
+          lowestPrice,
+          source: "경매장",
+        };
+      }
+    })
+  );
+
+  // totalValue 기준 정렬 (0인 항목은 뒤로)
+  return ranked.sort((a, b) => {
+    if (a.totalValue === 0 && b.totalValue === 0) return 0;
+    if (a.totalValue === 0) return 1;
+    if (b.totalValue === 0) return -1;
+    return b.totalValue - a.totalValue;
+  });
 }
 
 export async function GET() {
@@ -73,7 +157,17 @@ export async function GET() {
     const results = [];
 
     for (const cat of CATEGORIES) {
-      // 해당 카테고리 아이템 수집
+      const hardcoded = HARDCODED_ITEMS[cat.category];
+
+      // ── 하드코딩 카테고리: shared cache 우회, 직접 API 조회 ──
+      if (hardcoded) {
+        console.log(`[BIS] ${cat.category}: using hardcoded items (${hardcoded.length})`);
+        const items = await resolveHardcodedItems(hardcoded);
+        results.push({ category: cat.category, emoji: cat.emoji, items });
+        continue;
+      }
+
+      // ── 기존 로직: shared cache 기반 (크리쳐 등) ──
       let categoryItems: { itemName: string; itemId: string; itemRarity: string; unitPrice: number }[] = [];
       for (const [type, items] of typeToItems) {
         if (cat.typeMatch(type)) {
@@ -105,7 +199,9 @@ export async function GET() {
             const prices = rows.map((r: any) => r.unitPrice).filter(Boolean);
             if (prices.length === 0) return null;
             const cleaned = removeOutliers(prices);
-            const avgPrice = cleaned.length > 0 ? Math.round(cleaned.reduce((a, b) => a + b, 0) / cleaned.length) : 0;
+            const avgPrice = cleaned.length > 0
+              ? Math.round(cleaned.reduce((a, b) => a + b, 0) / cleaned.length)
+              : 0;
             const totalValue = cleaned.reduce((a, b) => a + b, 0);
             return {
               itemName: name,
