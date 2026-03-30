@@ -425,8 +425,8 @@ function AuctionSoldPanel() {
     addRecent(query.trim());
     try {
       const recentRows = await fetchHistory(query.trim());
-      const filtered = filterByItemName(recentRows, query.trim());
-      filtered.sort((a: AuctionSoldItem, b: AuctionSoldItem) =>
+      const filtered = (filterByItemName(recentRows, query.trim()) as AuctionSoldItem[]);
+      filtered.sort((a, b) =>
         (b.soldDate || "").localeCompare(a.soldDate || "")
       );
       setResults(filtered);
