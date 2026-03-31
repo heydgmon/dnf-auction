@@ -641,7 +641,6 @@ function SetItemPanel() {
 
   // 📦 연도 데이터
   const [data, setData] = useState<Record<number, any[]>>({});
-  const [openYear, setOpenYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   // ✅ 연도 데이터 로드 (캐싱 API)
@@ -727,38 +726,32 @@ function SetItemPanel() {
       {!loading &&
         years.map((year) => (
           <Card key={year} style={{ padding: 0 }}>
+            {/* 🔥 클릭 영역 제거 → 그냥 헤더 */}
             <div
-              onClick={() =>
-                setOpenYear(openYear === year ? null : year)
-              }
               style={{
                 padding: "12px 16px",
-                cursor: "pointer",
-                fontWeight: 600,
-                display: "flex",
-                justifyContent: "space-between",
+                fontWeight: 700,
+                background: "var(--bg-secondary)",
               }}
             >
-              <span>{year}</span>
-              <span>{openYear === year ? "▲" : "▼"}</span>
+              {year}
             </div>
 
-            {openYear === year && (
-              <div style={{ borderTop: "1px solid var(--border-color)" }}>
-                {data[year]?.map((item: any) => (
-                  <div
-                    key={item.setItemId}
-                    style={{
-                      padding: "10px 16px",
-                      borderBottom: "1px solid var(--border-color)",
-                      fontSize: 13,
-                    }}
-                  >
-                    {item.setItemName}
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* 🔥 항상 펼쳐짐 */}
+            <div style={{ borderTop: "1px solid var(--border-color)" }}>
+              {data[year]?.map((item: any) => (
+                <div
+                  key={item.setItemId}
+                  style={{
+                    padding: "10px 16px",
+                    borderBottom: "1px solid var(--border-color)",
+                    fontSize: 13,
+                  }}
+                >
+                  {item.setItemName}
+                </div>
+              ))}
+            </div>
           </Card>
         ))}
     </div>
