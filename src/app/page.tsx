@@ -633,7 +633,81 @@ function AuctionSoldPanel() {
 function ItemSearchPanel() { const [query, setQuery] = useState(""); const [results, setResults] = useState<any[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [searched, setSearched] = useState(false); const [popular, setPopular] = useState<PopularItem[]>([]); const [detail, setDetail] = useState<any>(null); useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []); const search = useCallback(async () => { if (!query.trim()) return; setLoading(true); setError(""); setSearched(true); setDetail(null); addRecent(query.trim()); try { const res = await fetch(`/api/items?itemName=${encodeURIComponent(query.trim())}&wordType=full&limit=30`); const data = await res.json(); if (!res.ok || data.error) { setError(data.error?.message || "오류"); setResults([]); } else { setResults(extractRows(data)); } } catch { setError("서버 연결에 실패했습니다."); setResults([]); } finally { setLoading(false); } }, [query]); const loadDetail = useCallback(async (id: string) => { if (detail?.itemId === id) { setDetail(null); return; } try { const r = await fetch(`/api/item-detail?itemId=${id}`); setDetail(await r.json()); } catch {} }, [detail]); return (<div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}><Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>던파 전체 아이템의 상세 스펙을 조회합니다.</p><AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 닳아버린 순례의 증표, 광휘의 소울...)" buttonLabel="아이템 검색" /></Card>{!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}<ErrorMsg msg={error} />{loading && <SkeletonList count={5} />}{!loading && results.length > 0 && (<div><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{results.length}건</p><div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{results.map((item: any) => (<div key={item.itemId}><div className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12, cursor: "pointer" }} onClick={() => loadDetail(item.itemId)}><ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>Lv.{item.itemAvailableLevel} · {item.itemType}</div></div><span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 500, background: `${getRarityColor(item.itemRarity)}10`, color: getRarityColor(item.itemRarity) }}>{item.itemRarity}</span></div>{detail?.itemId === item.itemId && (<div className="card animate-slide-up" style={{ marginTop: 4, padding: "14px 16px", borderColor: "var(--color-primary)", background: "var(--color-surface)" }}><div style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}><span style={{ fontWeight: 600 }}>{detail.itemName}</span>{detail.itemExplain && <div style={{ color: "var(--text-secondary)" }} dangerouslySetInnerHTML={{ __html: detail.itemExplain.replace(/\n/g, "<br/>") }} />}{detail.itemFlavorText && <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>{detail.itemFlavorText}</div>}{detail.setItemName && <div style={{ fontSize: 10, color: "var(--color-primary)" }}>세트: {detail.setItemName}</div>}</div></div>)}</div>))}</div></div>)}{!loading && searched && !results.length && !error && <Empty msg="검색 결과가 없습니다." />}</div>); }
 
 /* ═══ 세트 아이템 ═══ */
-function SetItemPanel() { const [query, setQuery] = useState(""); const [results, setResults] = useState<SetItemResult[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [searched, setSearched] = useState(false); const [popular, setPopular] = useState<PopularItem[]>([]); useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []); const search = useCallback(async () => { if (!query.trim()) return; setLoading(true); setError(""); setSearched(true); addRecent(query.trim()); try { const res = await fetch(`/api/setitems?setItemName=${encodeURIComponent(query.trim())}&wordType=full&limit=30`); const data: SetItemSearchResponse = await res.json(); if (!res.ok || data.error) { setError(data.error?.message || "오류"); setResults([]); } else setResults(data.rows || []); } catch { setError("서버 연결에 실패했습니다."); setResults([]); } finally { setLoading(false); } }, [query]); return (<div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}><Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>세트 아이템 구성을 검색합니다.</p><AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="세트 이름 검색 (예: 패키지)" buttonLabel="세트 검색" /></Card>{!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}<ErrorMsg msg={error} />{loading && <SkeletonList count={5} />}{!loading && results.length > 0 && (<div><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{results.length}건</p><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 8 }}>{results.map(item => (<div key={item.setItemId} className="card" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, fontSize: 12 }}><div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--color-primary-light)", color: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>SET</div><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.setItemName}</div><div style={{ fontSize: 10, color: "var(--text-muted)" }}>ID: {item.setItemId}</div></div></div>))}</div></div>)}{!loading && searched && !results.length && !error && <Empty msg="검색 결과가 없습니다." />}</div>); }
+function SetItemPanel() {
+  const [data, setData] = useState<Record<number, any[]>>({});
+  const [openYear, setOpenYear] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/setitems-all")
+      .then((res) => res.json())
+      .then((res) => setData(res))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <SkeletonList count={5} />;
+
+  const years = Object.keys(data)
+    .map(Number)
+    .sort((a, b) => b - a);
+
+  return (
+    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Card>
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
+          📦 세트 아이템 (연도별)
+        </h2>
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          연도별로 세트 아이템을 확인할 수 있습니다.
+        </p>
+      </Card>
+
+      {years.map((year) => (
+        <Card key={year} style={{ padding: 0 }}>
+          {/* 헤더 */}
+          <div
+            onClick={() =>
+              setOpenYear(openYear === year ? null : year)
+            }
+            style={{
+              padding: "12px 16px",
+              cursor: "pointer",
+              fontWeight: 600,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <span>{year}</span>
+            <span>{openYear === year ? "▲" : "▼"}</span>
+          </div>
+
+          {/* 펼쳐짐 */}
+          {openYear === year && (
+            <div style={{ borderTop: "1px solid var(--border-color)" }}>
+              {data[year]?.length === 0 ? (
+                <Empty msg="데이터 없음" />
+              ) : (
+                data[year].map((item: any) => (
+                  <div
+                    key={item.setItemId}
+                    style={{
+                      padding: "10px 16px",
+                      borderBottom: "1px solid var(--border-color)",
+                      fontSize: 13,
+                    }}
+                  >
+                    {item.setItemName}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 /* ═══ 메인 (트렌딩) ═══ */
 interface TrendingItem { itemName: string; auctionCount: number; lowestPrice: number; itemRarity: string; itemId: string; itemType: string; }
