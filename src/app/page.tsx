@@ -108,13 +108,58 @@ function AutocompleteSearch({ query, setQuery, onSearch, loading, placeholder, b
 function SearchHelpers({ popular, onSelect }: { popular: PopularItem[]; onSelect: (n: string) => void }) { const [, forceUpdate] = useState(0); return (<div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>{getRecent().length > 0 && (<section><div className="section-title">🕐 최근 검색</div><RecentTags onSelect={n => { onSelect(n); forceUpdate(v => v + 1); }} /></section>)}{popular.length > 0 && (<section><div className="section-title">🔥 인기 검색 아이템</div><PopularCards items={popular} onSelect={onSelect} /></section>)}</div>); }
 
 /* ═══ 알림 ═══ */
+/*
+ * 아래 코드를 기존 AlertPanel 함수 전체를 대체하여 사용하세요.
+ * 변경사항:
+ *   1. recommendedPrices 상태 + useEffect 추가 (PC방 토큰 교환권, 피로 회복의 비약 시세 조회)
+ *   2. "내 알림 조회" Card 아래에 "천해천 업데이트 영향 분석" 섹션 추가
+ */
+
 function AlertPanel() {
   const [popular, setPopular] = useState<PopularItem[]>([]);
   const [alertEmail, setAlertEmail] = useState(""); const [alertItem, setAlertItem] = useState("");
   const [alertPrice, setAlertPrice] = useState(""); const [alertCondition, setAlertCondition] = useState<"below"|"above">("below");
   const [alertMsg, setAlertMsg] = useState(""); const [alertError, setAlertError] = useState(""); const [alertLoading, setAlertLoading] = useState(false);
   const [myEmail, setMyEmail] = useState(""); const [myAlerts, setMyAlerts] = useState<AlertRule[]>([]); const [myAlertsLoading, setMyAlertsLoading] = useState(false);
+
+  // ── 추천 아이템 시세 ──
+  const [recommendedPrices, setRecommendedPrices] = useState<Record<string, { lowestPrice: number; count: number; loading: boolean }>>({
+    "PC방 토큰 교환권": { lowestPrice: 0, count: 0, loading: true },
+    "피로 회복의 비약": { lowestPrice: 0, count: 0, loading: true },
+  });
+
   useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []);
+
+  // ── 추천 아이템 경매장 최저가 조회 ──
+  useEffect(() => {
+    const items = ["PC방 토큰 교환권", "피로 회복의 비약"];
+    items.forEach(async (itemName) => {
+      try {
+        const res = await fetch(`/api/auction?itemName=${encodeURIComponent(itemName)}&wordType=match&limit=10`);
+        const data = await res.json();
+        const rows = data.rows || [];
+        if (rows.length > 0) {
+          // unitPrice 오름차순 정렬 (서버에서 이미 정렬됨)
+          const lowestPrice = rows[0].unitPrice || 0;
+          setRecommendedPrices(prev => ({
+            ...prev,
+            [itemName]: { lowestPrice, count: rows.length, loading: false }
+          }));
+        } else {
+          setRecommendedPrices(prev => ({
+            ...prev,
+            [itemName]: { lowestPrice: 0, count: 0, loading: false }
+          }));
+        }
+      } catch {
+        setRecommendedPrices(prev => ({
+          ...prev,
+          [itemName]: { lowestPrice: 0, count: 0, loading: false }
+        }));
+      }
+    });
+  }, []);
+
   const register = useCallback(async () => { setAlertMsg(""); setAlertError(""); if (!alertEmail || !alertItem || !alertPrice) { setAlertError("모든 항목을 입력해주세요."); return; } if (!validateEmail(alertEmail)) { setAlertError("올바른 이메일 주소를 입력해주세요."); return; } setAlertLoading(true); try { const res = await fetch("/api/alert-register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: alertEmail, itemName: alertItem.trim(), targetPrice: Number(alertPrice), condition: alertCondition }) }); const data: AlertRegisterResponse = await res.json(); if (data.success) { setAlertMsg(data.message); setAlertItem(""); setAlertPrice(""); } else setAlertError(data.message); } catch { setAlertError("서버 연결에 실패했습니다."); } finally { setAlertLoading(false); } }, [alertEmail, alertItem, alertPrice, alertCondition]);
   const lookup = useCallback(async () => { if (!myEmail || !validateEmail(myEmail)) return; setMyAlertsLoading(true); try { const r = await fetch(`/api/alert?email=${encodeURIComponent(myEmail)}`); const d: AlertListResponse = await r.json(); setMyAlerts(d.rules || []); } catch { setMyAlerts([]); } finally { setMyAlertsLoading(false); } }, [myEmail]);
   const del = useCallback(async (id: string) => { await fetch("/api/alert", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, email: myEmail }) }); lookup(); }, [myEmail, lookup]);
@@ -145,11 +190,210 @@ function AlertPanel() {
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}><input type="email" value={myEmail} onChange={e => setMyEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && lookup()} placeholder="등록한 이메일" className="input-base" style={{ flex: 1 }} /><Btn onClick={lookup} loading={myAlertsLoading} disabled={!myEmail} label="조회" variant="secondary" /></div>
         {myAlerts.length > 0 && (<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{myAlerts.map(a => (<div key={a.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)", fontSize: 12 }}><div style={{ flex: 1, minWidth: 0 }}><span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{a.itemName}</span><span style={{ marginLeft: 8, color: "var(--text-muted)" }}>{formatGold(a.targetPrice)} {a.condition === "below" ? "이하" : "이상"}</span></div><span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, fontWeight: 600, background: a.fulfilled ? "#F0FDF4" : "var(--color-primary-light)", color: a.fulfilled ? "var(--color-success)" : "var(--color-primary)" }}>{a.fulfilled ? "완료" : "대기중"}</span>{!a.fulfilled && <button onClick={() => del(a.id)} style={{ fontSize: 10, color: "var(--color-danger)", background: "none", border: "none", cursor: "pointer", padding: "4px 8px" }}>삭제</button>}</div>))}</div>)}
       </Card>
+
+      {/* ═══ 천해천 업데이트 영향 분석 (NEW) ═══ */}
+      <div style={{
+        background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+        borderRadius: 16,
+        padding: "24px 20px",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        {/* 배경 장식 */}
+        <div style={{
+          position: "absolute", top: -40, right: -40,
+          width: 160, height: 160,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+        <div style={{
+          position: "absolute", bottom: -20, left: -20,
+          width: 100, height: 100,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(217,119,6,0.1) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+
+        {/* 헤더 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: "linear-gradient(135deg, #D97706, #F59E0B)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 18,
+            flexShrink: 0,
+          }}>
+            ⚡
+          </div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#F8FAFC", letterSpacing: "-0.02em" }}>
+              업데이트 영향 분석
+            </div>
+            <div style={{ fontSize: 11, color: "#64748B", marginTop: 1 }}>
+              천해천 패치 · 시장 영향 리포트
+            </div>
+          </div>
+          <div style={{
+            marginLeft: "auto",
+            padding: "3px 10px",
+            borderRadius: 99,
+            background: "rgba(239,68,68,0.15)",
+            border: "1px solid rgba(239,68,68,0.3)",
+            fontSize: 10,
+            fontWeight: 700,
+            color: "#F87171",
+            letterSpacing: "0.02em",
+          }}>
+            HOT
+          </div>
+        </div>
+
+        {/* 분석 문구 */}
+        <div style={{
+          background: "rgba(255,255,255,0.04)",
+          borderRadius: 12,
+          padding: "14px 16px",
+          marginBottom: 16,
+          borderLeft: "3px solid #D97706",
+        }}>
+          <p style={{ fontSize: 12, color: "#CBD5E1", lineHeight: 1.7, margin: 0 }}>
+            이번 <span style={{ color: "#F59E0B", fontWeight: 700 }}>천해천 업데이트</span>로 인해 콘텐츠 소모량이 증가하면서 소모성 아이템의 수요가 전반적으로 상승하는 흐름을 보이고 있습니다.
+          </p>
+          <p style={{ fontSize: 12, color: "#CBD5E1", lineHeight: 1.7, margin: 0, marginTop: 6 }}>
+            특히 <span style={{ color: "#60A5FA", fontWeight: 600 }}>던전 플레이에서 사용되는 아이템</span>의 소비량이 빠르게 증가하고 있습니다.
+          </p>
+        </div>
+
+        {/* 추천 아이템 라벨 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#F8FAFC" }}>
+            📌 주목 아이템
+          </div>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+        </div>
+
+        {/* 추천 아이템 카드 2개 */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+          {[
+            { name: "PC방 토큰 교환권", tag: "소비량 증가", emoji: "🎫" },
+            { name: "피로 회복의 비약", tag: "소비량 증가", emoji: "🧪" },
+          ].map((item) => {
+            const priceData = recommendedPrices[item.name];
+            return (
+              <div key={item.name} style={{
+                flex: "1 1 200px",
+                background: "rgba(255,255,255,0.05)",
+                borderRadius: 12,
+                padding: "14px 16px",
+                border: "1px solid rgba(255,255,255,0.06)",
+                transition: "all 0.2s",
+                cursor: "pointer",
+              }}
+                onClick={() => { setAlertItem(item.name); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                onMouseOver={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(37,99,235,0.3)";
+                }}
+                onMouseOut={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)";
+                }}
+              >
+                {/* 아이템 상단 */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <span style={{ fontSize: 22 }}>{item.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 13, fontWeight: 700, color: "#F1F5F9",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {item.name}
+                    </div>
+                    <div style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      marginTop: 3,
+                      padding: "2px 8px",
+                      borderRadius: 99,
+                      background: "rgba(239,68,68,0.12)",
+                      border: "1px solid rgba(239,68,68,0.2)",
+                    }}>
+                      <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "#EF4444", animation: "pulse 2s infinite" }} />
+                      <span style={{ fontSize: 10, fontWeight: 600, color: "#FCA5A5" }}>
+                        {item.tag}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 경매장 최저가 */}
+                <div style={{
+                  background: "rgba(0,0,0,0.2)",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                }}>
+                  <div style={{ fontSize: 10, color: "#64748B", marginBottom: 4 }}>
+                    경매장 최저가
+                  </div>
+                  {priceData?.loading ? (
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "#475569" }}>
+                      조회 중...
+                    </div>
+                  ) : priceData?.lowestPrice ? (
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: "#F59E0B", letterSpacing: "-0.02em" }}>
+                        {formatGold(priceData.lowestPrice)}
+                      </span>
+                      <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>
+                        골드
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>
+                      매물 없음
+                    </div>
+                  )}
+                  {priceData && !priceData.loading && priceData.count > 0 && (
+                    <div style={{ fontSize: 10, color: "#475569", marginTop: 3 }}>
+                      등록 매물 {priceData.count}건+
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 하단 추가 문구 */}
+        <div style={{
+          background: "rgba(37,99,235,0.08)",
+          borderRadius: 10,
+          padding: "12px 14px",
+          border: "1px solid rgba(37,99,235,0.15)",
+          display: "flex", alignItems: "flex-start", gap: 10,
+        }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: 22, height: 22, borderRadius: 6,
+            background: "rgba(37,99,235,0.2)",
+            fontSize: 12, flexShrink: 0, marginTop: 1,
+          }}>
+            💡
+          </span>
+          <p style={{ fontSize: 11, color: "#93C5FD", lineHeight: 1.65, margin: 0, fontWeight: 500 }}>
+            지금 가격은 이미 <span style={{ color: "#FDE68A", fontWeight: 700 }}>상승 초입 구간</span>으로, 단기적으로 추가 상승 가능성이 있는 구간입니다.
+          </p>
+        </div>
+
+        {/* 클릭 안내 */}
+        <p style={{ fontSize: 10, color: "#475569", textAlign: "center", marginTop: 12, margin: "12px 0 0" }}>
+        </p>
+      </div>
+
       {popular.length > 0 && (<section><div className="section-title">🔥 인기 검색 아이템</div><PopularCards items={popular} onSelect={n => { setAlertItem(n); window.scrollTo({ top: 0, behavior: "smooth" }); }} /></section>)}
     </div>
   );
 }
-
 /* ═══ 경매장 ═══ */
 function AuctionSearchPanel() { const [query, setQuery] = useState(""); const [results, setResults] = useState<AuctionItem[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [searched, setSearched] = useState(false); const [popular, setPopular] = useState<PopularItem[]>([]); useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []); const search = useCallback(async () => { if (!query.trim()) return; setLoading(true); setError(""); setSearched(true); addRecent(query.trim()); try { const res = await fetch(`/api/auction?itemName=${encodeURIComponent(query.trim())}&wordType=match&limit=400`); const data: AuctionSearchResponse = await res.json(); if (!res.ok || data.error) { setError(data.error?.message || `오류`); setResults([]); } else { const allRows = [...(data.rows || [])]; allRows.sort((a, b) => a.unitPrice - b.unitPrice); setResults(allRows); } } catch { setError("서버 연결에 실패했습니다."); setResults([]); } finally { setLoading(false); } }, [query]); return (<div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}><Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>현재 경매장 등록 아이템을 검색합니다. 개당 가격 낮은 순으로 정렬됩니다.</p><AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)" /></Card>{!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}<ErrorMsg msg={error} />{loading && <SkeletonList count={5} />}{!loading && results.length > 0 && (<div><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{results.length}건 · 개당 가격 낮은 순</p>{results.length >= 750 && (<div style={{ padding: "8px 12px", borderRadius: 8, marginBottom: 8, fontSize: 11, background: "var(--color-accent-light)", color: "var(--color-accent)", border: "1px solid var(--color-accent)" }}>⚠ 등록 매물이 많아 일부만 표시됩니다.</div>)}<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{results.map((item, i) => <AuctionRow key={`${item.auctionNo}-${i}`} item={item} />)}</div></div>)}{!loading && searched && !results.length && !error && <Empty msg="검색 결과가 없습니다." />}</div>); }
 
