@@ -111,7 +111,7 @@ function SearchHelpers({ popular, onSelect }: { popular: PopularItem[]; onSelect
 /*
  * 아래 코드를 기존 AlertPanel 함수 전체를 대체하여 사용하세요.
  * 변경사항:
- *   1. recommendedPrices 상태 + useEffect 추가 (PC방 토큰 교환권, 피로 회복의 비약 시세 조회)
+ *   1. recommendedPrices 상태 + useEffect 추가 (PC방 토큰 교환권, 피로 회복의 영약 시세 조회)
  *   2. "내 알림 조회" Card 아래에 "천해천 업데이트 영향 분석" 섹션 추가
  */
 
@@ -125,14 +125,14 @@ function AlertPanel() {
   // ── 추천 아이템 시세 ──
   const [recommendedPrices, setRecommendedPrices] = useState<Record<string, { lowestPrice: number; count: number; loading: boolean }>>({
     "PC방 토큰 교환권": { lowestPrice: 0, count: 0, loading: true },
-    "피로 회복의 비약": { lowestPrice: 0, count: 0, loading: true },
+    "피로 회복의 영약": { lowestPrice: 0, count: 0, loading: true },
   });
 
   useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []);
 
   // ── 추천 아이템 경매장 최저가 조회 ──
   useEffect(() => {
-    const items = ["PC방 토큰 교환권", "피로 회복의 비약"];
+    const items = ["PC방 토큰 교환권", "피로 회복의 영약"];
     items.forEach(async (itemName) => {
       try {
         const res = await fetch(`/api/auction?itemName=${encodeURIComponent(itemName)}&wordType=match&limit=10`);
@@ -277,7 +277,7 @@ function AlertPanel() {
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           {[
             { name: "PC방 토큰 교환권", tag: "소비량 증가", emoji: "🎫" },
-            { name: "피로 회복의 비약", tag: "소비량 증가", emoji: "🧪" },
+            { name: "피로 회복의 영약", tag: "소비량 증가", emoji: "🧪" },
           ].map((item) => {
             const priceData = recommendedPrices[item.name];
             return (
