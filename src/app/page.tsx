@@ -115,6 +115,10 @@ function SearchHelpers({ popular, onSelect }: { popular: PopularItem[]; onSelect
  *   2. "내 알림 조회" Card 아래에 "천해천 업데이트 영향 분석" 섹션 추가
  */
 
+// ══════════════════════════════════════════════════════
+// [변경 1] AlertPanel — 이모지 → ItemImg 실제 아이템 이미지로 교체
+// ══════════════════════════════════════════════════════
+
 function AlertPanel() {
   const [popular, setPopular] = useState<PopularItem[]>([]);
   const [alertEmail, setAlertEmail] = useState(""); const [alertItem, setAlertItem] = useState("");
@@ -122,39 +126,40 @@ function AlertPanel() {
   const [alertMsg, setAlertMsg] = useState(""); const [alertError, setAlertError] = useState(""); const [alertLoading, setAlertLoading] = useState(false);
   const [myEmail, setMyEmail] = useState(""); const [myAlerts, setMyAlerts] = useState<AlertRule[]>([]); const [myAlertsLoading, setMyAlertsLoading] = useState(false);
 
-  // ── 추천 아이템 시세 ──
-  const [recommendedPrices, setRecommendedPrices] = useState<Record<string, { lowestPrice: number; count: number; loading: boolean }>>({
-    "PC방 토큰 교환권": { lowestPrice: 0, count: 0, loading: true },
-    "피로 회복의 영약": { lowestPrice: 0, count: 0, loading: true },
+  // ── 추천 아이템 시세 (itemId 포함) ──
+  const [recommendedPrices, setRecommendedPrices] = useState<Record<string, { lowestPrice: number; count: number; loading: boolean; itemId: string; itemRarity: string }>>({
+    "PC방 토큰 교환권": { lowestPrice: 0, count: 0, loading: true, itemId: "", itemRarity: "" },
+    "피로 회복의 비약": { lowestPrice: 0, count: 0, loading: true, itemId: "", itemRarity: "" },
   });
 
   useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []);
 
-  // ── 추천 아이템 경매장 최저가 조회 ──
+  // ── 추천 아이템 경매장 최저가 + itemId 조회 ──
   useEffect(() => {
-    const items = ["PC방 토큰 교환권", "피로 회복의 영약"];
+    const items = ["PC방 토큰 교환권", "피로 회복의 비약"];
     items.forEach(async (itemName) => {
       try {
         const res = await fetch(`/api/auction?itemName=${encodeURIComponent(itemName)}&wordType=match&limit=10`);
         const data = await res.json();
         const rows = data.rows || [];
         if (rows.length > 0) {
-          // unitPrice 오름차순 정렬 (서버에서 이미 정렬됨)
           const lowestPrice = rows[0].unitPrice || 0;
+          const itemId = rows[0].itemId || "";
+          const itemRarity = rows[0].itemRarity || "";
           setRecommendedPrices(prev => ({
             ...prev,
-            [itemName]: { lowestPrice, count: rows.length, loading: false }
+            [itemName]: { lowestPrice, count: rows.length, loading: false, itemId, itemRarity }
           }));
         } else {
           setRecommendedPrices(prev => ({
             ...prev,
-            [itemName]: { lowestPrice: 0, count: 0, loading: false }
+            [itemName]: { lowestPrice: 0, count: 0, loading: false, itemId: "", itemRarity: "" }
           }));
         }
       } catch {
         setRecommendedPrices(prev => ({
           ...prev,
-          [itemName]: { lowestPrice: 0, count: 0, loading: false }
+          [itemName]: { lowestPrice: 0, count: 0, loading: false, itemId: "", itemRarity: "" }
         }));
       }
     });
@@ -191,7 +196,7 @@ function AlertPanel() {
         {myAlerts.length > 0 && (<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{myAlerts.map(a => (<div key={a.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)", fontSize: 12 }}><div style={{ flex: 1, minWidth: 0 }}><span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{a.itemName}</span><span style={{ marginLeft: 8, color: "var(--text-muted)" }}>{formatGold(a.targetPrice)} {a.condition === "below" ? "이하" : "이상"}</span></div><span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, fontWeight: 600, background: a.fulfilled ? "#F0FDF4" : "var(--color-primary-light)", color: a.fulfilled ? "var(--color-success)" : "var(--color-primary)" }}>{a.fulfilled ? "완료" : "대기중"}</span>{!a.fulfilled && <button onClick={() => del(a.id)} style={{ fontSize: 10, color: "var(--color-danger)", background: "none", border: "none", cursor: "pointer", padding: "4px 8px" }}>삭제</button>}</div>))}</div>)}
       </Card>
 
-      {/* ═══ 천해천 업데이트 영향 분석 (NEW) ═══ */}
+      {/* ═══ 천해천 업데이트 영향 분석 ═══ */}
       <div style={{
         background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
         borderRadius: 16,
@@ -200,63 +205,21 @@ function AlertPanel() {
         overflow: "hidden",
       }}>
         {/* 배경 장식 */}
-        <div style={{
-          position: "absolute", top: -40, right: -40,
-          width: 160, height: 160,
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
-        <div style={{
-          position: "absolute", bottom: -20, left: -20,
-          width: 100, height: 100,
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(217,119,6,0.1) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
+        <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -20, left: -20, width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         {/* 헤더 */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: "linear-gradient(135deg, #D97706, #F59E0B)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 18,
-            flexShrink: 0,
-          }}>
-            ⚡
-          </div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #D97706, #F59E0B)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>⚡</div>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#F8FAFC", letterSpacing: "-0.02em" }}>
-              업데이트 영향 분석
-            </div>
-            <div style={{ fontSize: 11, color: "#64748B", marginTop: 1 }}>
-              천해천 패치 · 시장 영향 리포트
-            </div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#F8FAFC", letterSpacing: "-0.02em" }}>업데이트 영향 분석</div>
+            <div style={{ fontSize: 11, color: "#64748B", marginTop: 1 }}>천해천 패치 · 시장 영향 리포트</div>
           </div>
-          <div style={{
-            marginLeft: "auto",
-            padding: "3px 10px",
-            borderRadius: 99,
-            background: "rgba(239,68,68,0.15)",
-            border: "1px solid rgba(239,68,68,0.3)",
-            fontSize: 10,
-            fontWeight: 700,
-            color: "#F87171",
-            letterSpacing: "0.02em",
-          }}>
-            HOT
-          </div>
+          <div style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 99, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", fontSize: 10, fontWeight: 700, color: "#F87171", letterSpacing: "0.02em" }}>HOT</div>
         </div>
 
         {/* 분석 문구 */}
-        <div style={{
-          background: "rgba(255,255,255,0.04)",
-          borderRadius: 12,
-          padding: "14px 16px",
-          marginBottom: 16,
-          borderLeft: "3px solid #D97706",
-        }}>
+        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "14px 16px", marginBottom: 16, borderLeft: "3px solid #D97706" }}>
           <p style={{ fontSize: 12, color: "#CBD5E1", lineHeight: 1.7, margin: 0 }}>
             이번 <span style={{ color: "#F59E0B", fontWeight: 700 }}>천해천 업데이트</span>로 인해 콘텐츠 소모량이 증가하면서 소모성 아이템의 수요가 전반적으로 상승하는 흐름을 보이고 있습니다.
           </p>
@@ -267,17 +230,15 @@ function AlertPanel() {
 
         {/* 추천 아이템 라벨 */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#F8FAFC" }}>
-            📌 주목 아이템
-          </div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#F8FAFC" }}>📌 주목 아이템</div>
           <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
         </div>
 
-        {/* 추천 아이템 카드 2개 */}
+        {/* 추천 아이템 카드 2개 — ItemImg 사용 */}
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           {[
-            { name: "PC방 토큰 교환권", tag: "소비량 증가", emoji: "🎫" },
-            { name: "피로 회복의 영약", tag: "소비량 증가", emoji: "🧪" },
+            { name: "PC방 토큰 교환권", tag: "소비량 증가" },
+            { name: "피로 회복의 비약", tag: "소비량 증가" },
           ].map((item) => {
             const priceData = recommendedPrices[item.name];
             return (
@@ -291,72 +252,42 @@ function AlertPanel() {
                 cursor: "pointer",
               }}
                 onClick={() => { setAlertItem(item.name); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                onMouseOver={e => {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)";
-                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(37,99,235,0.3)";
-                }}
-                onMouseOut={e => {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
-                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)";
-                }}
+                onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(37,99,235,0.3)"; }}
+                onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)"; }}
               >
-                {/* 아이템 상단 */}
+                {/* 아이템 상단 — 실제 아이템 이미지 사용 */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <span style={{ fontSize: 22 }}>{item.emoji}</span>
+                  {priceData?.loading ? (
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} className="skeleton" />
+                  ) : (
+                    <ItemImg itemId={priceData?.itemId || ""} itemName={item.name} rarity={priceData?.itemRarity} size={40} />
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 13, fontWeight: 700, color: "#F1F5F9",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#F1F5F9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.name}
                     </div>
-                    <div style={{
-                      display: "inline-flex", alignItems: "center", gap: 4,
-                      marginTop: 3,
-                      padding: "2px 8px",
-                      borderRadius: 99,
-                      background: "rgba(239,68,68,0.12)",
-                      border: "1px solid rgba(239,68,68,0.2)",
-                    }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 3, padding: "2px 8px", borderRadius: 99, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}>
                       <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "#EF4444", animation: "pulse 2s infinite" }} />
-                      <span style={{ fontSize: 10, fontWeight: 600, color: "#FCA5A5" }}>
-                        {item.tag}
-                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: "#FCA5A5" }}>{item.tag}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 경매장 최저가 */}
-                <div style={{
-                  background: "rgba(0,0,0,0.2)",
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                }}>
-                  <div style={{ fontSize: 10, color: "#64748B", marginBottom: 4 }}>
-                    경매장 최저가
-                  </div>
+                <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 10, color: "#64748B", marginBottom: 4 }}>경매장 최저가</div>
                   {priceData?.loading ? (
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "#475569" }}>
-                      조회 중...
-                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "#475569" }}>조회 중...</div>
                   ) : priceData?.lowestPrice ? (
                     <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                      <span style={{ fontSize: 18, fontWeight: 800, color: "#F59E0B", letterSpacing: "-0.02em" }}>
-                        {formatGold(priceData.lowestPrice)}
-                      </span>
-                      <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>
-                        골드
-                      </span>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: "#F59E0B", letterSpacing: "-0.02em" }}>{formatGold(priceData.lowestPrice)}</span>
+                      <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>골드</span>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>
-                      매물 없음
-                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>매물 없음</div>
                   )}
                   {priceData && !priceData.loading && priceData.count > 0 && (
-                    <div style={{ fontSize: 10, color: "#475569", marginTop: 3 }}>
-                      등록 매물 {priceData.count}건+
-                    </div>
+                    <div style={{ fontSize: 10, color: "#475569", marginTop: 3 }}>등록 매물 {priceData.count}건+</div>
                   )}
                 </div>
               </div>
@@ -365,29 +296,13 @@ function AlertPanel() {
         </div>
 
         {/* 하단 추가 문구 */}
-        <div style={{
-          background: "rgba(37,99,235,0.08)",
-          borderRadius: 10,
-          padding: "12px 14px",
-          border: "1px solid rgba(37,99,235,0.15)",
-          display: "flex", alignItems: "flex-start", gap: 10,
-        }}>
-          <span style={{
-            display: "inline-flex", alignItems: "center", justifyContent: "center",
-            width: 22, height: 22, borderRadius: 6,
-            background: "rgba(37,99,235,0.2)",
-            fontSize: 12, flexShrink: 0, marginTop: 1,
-          }}>
-            💡
-          </span>
+        <div style={{ background: "rgba(37,99,235,0.08)", borderRadius: 10, padding: "12px 14px", border: "1px solid rgba(37,99,235,0.15)", display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 6, background: "rgba(37,99,235,0.2)", fontSize: 12, flexShrink: 0, marginTop: 1 }}>💡</span>
           <p style={{ fontSize: 11, color: "#93C5FD", lineHeight: 1.65, margin: 0, fontWeight: 500 }}>
             지금 가격은 이미 <span style={{ color: "#FDE68A", fontWeight: 700 }}>상승 초입 구간</span>으로, 단기적으로 추가 상승 가능성이 있는 구간입니다.
           </p>
         </div>
-
-        {/* 클릭 안내 */}
-        <p style={{ fontSize: 10, color: "#475569", textAlign: "center", marginTop: 12, margin: "12px 0 0" }}>
-        </p>
+        <p style={{ fontSize: 10, color: "#475569", textAlign: "center", margin: "12px 0 0" }}>아이템 카드를 클릭하면 알림 등록으로 자동 입력됩니다</p>
       </div>
 
       {popular.length > 0 && (<section><div className="section-title">🔥 인기 검색 아이템</div><PopularCards items={popular} onSelect={n => { setAlertItem(n); window.scrollTo({ top: 0, behavior: "smooth" }); }} /></section>)}
@@ -874,7 +789,221 @@ function AuctionSoldPanel() {
   );
 }
 /* ═══ 아이템 DB ═══ */
-function ItemSearchPanel() { const [query, setQuery] = useState(""); const [results, setResults] = useState<any[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [searched, setSearched] = useState(false); const [popular, setPopular] = useState<PopularItem[]>([]); const [detail, setDetail] = useState<any>(null); useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []); const search = useCallback(async () => { if (!query.trim()) return; setLoading(true); setError(""); setSearched(true); setDetail(null); addRecent(query.trim()); try { const res = await fetch(`/api/items?itemName=${encodeURIComponent(query.trim())}&wordType=full&limit=30`); const data = await res.json(); if (!res.ok || data.error) { setError(data.error?.message || "오류"); setResults([]); } else { setResults(extractRows(data)); } } catch { setError("서버 연결에 실패했습니다."); setResults([]); } finally { setLoading(false); } }, [query]); const loadDetail = useCallback(async (id: string) => { if (detail?.itemId === id) { setDetail(null); return; } try { const r = await fetch(`/api/item-detail?itemId=${id}`); setDetail(await r.json()); } catch {} }, [detail]); return (<div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}><Card><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>던파 전체 아이템의 상세 스펙을 조회합니다.</p><AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 닳아버린 순례의 증표, 광휘의 소울...)" buttonLabel="아이템 검색" /></Card>{!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}<ErrorMsg msg={error} />{loading && <SkeletonList count={5} />}{!loading && results.length > 0 && (<div><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{results.length}건</p><div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{results.map((item: any) => (<div key={item.itemId}><div className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12, cursor: "pointer" }} onClick={() => loadDetail(item.itemId)}><ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>Lv.{item.itemAvailableLevel} · {item.itemType}</div></div><span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 500, background: `${getRarityColor(item.itemRarity)}10`, color: getRarityColor(item.itemRarity) }}>{item.itemRarity}</span></div>{detail?.itemId === item.itemId && (<div className="card animate-slide-up" style={{ marginTop: 4, padding: "14px 16px", borderColor: "var(--color-primary)", background: "var(--color-surface)" }}><div style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}><span style={{ fontWeight: 600 }}>{detail.itemName}</span>{detail.itemExplain && <div style={{ color: "var(--text-secondary)" }} dangerouslySetInnerHTML={{ __html: detail.itemExplain.replace(/\n/g, "<br/>") }} />}{detail.itemFlavorText && <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>{detail.itemFlavorText}</div>}{detail.setItemName && <div style={{ fontSize: 10, color: "var(--color-primary)" }}>세트: {detail.setItemName}</div>}</div></div>)}</div>))}</div></div>)}{!loading && searched && !results.length && !error && <Empty msg="검색 결과가 없습니다." />}</div>); }
+// ══════════════════════════════════════════════════════
+// [변경 2] ItemSearchPanel — 검색창 밑에 천해천 신규 아이템 섹션 추가
+// ══════════════════════════════════════════════════════
+
+function ItemSearchPanel() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [searched, setSearched] = useState(false);
+  const [popular, setPopular] = useState<PopularItem[]>([]);
+  const [detail, setDetail] = useState<any>(null);
+
+  // ── 천해천 신규 아이템 상태 ──
+  const [newItems, setNewItems] = useState<any[]>([]);
+  const [newItemsLoading, setNewItemsLoading] = useState(true);
+  const [newItemDetail, setNewItemDetail] = useState<any>(null);
+
+  useEffect(() => { fetch("/api/popular-items").then(r => r.json()).then(d => setPopular(d.items || [])).catch(() => {}); }, []);
+
+  // ── 천해천 신규 아이템 로드: "서약" Lv115 + "결정" Lv115 ──
+  useEffect(() => {
+    const fetchNewItems = async () => {
+      setNewItemsLoading(true);
+      try {
+        const [res1, res2] = await Promise.all([
+          fetch(`/api/items?itemName=${encodeURIComponent("서약")}&wordType=full&limit=30`),
+          fetch(`/api/items?itemName=${encodeURIComponent("결정")}&wordType=full&limit=30`),
+        ]);
+        const [data1, data2] = await Promise.all([res1.json(), res2.json()]);
+        const rows1 = extractRows(data1).filter((item: any) => item.itemAvailableLevel === 115 && item.itemName?.includes("서약"));
+        const rows2 = extractRows(data2).filter((item: any) => item.itemAvailableLevel === 115 && item.itemName?.includes("결정"));
+        // 중복 제거 (itemId 기준)
+        const seen = new Set<string>();
+        const combined: any[] = [];
+        for (const item of [...rows1, ...rows2]) {
+          if (!seen.has(item.itemId)) {
+            seen.add(item.itemId);
+            combined.push(item);
+          }
+        }
+        setNewItems(combined);
+      } catch {
+        setNewItems([]);
+      } finally {
+        setNewItemsLoading(false);
+      }
+    };
+    fetchNewItems();
+  }, []);
+
+  const search = useCallback(async () => {
+    if (!query.trim()) return;
+    setLoading(true); setError(""); setSearched(true); setDetail(null);
+    addRecent(query.trim());
+    try {
+      const res = await fetch(`/api/items?itemName=${encodeURIComponent(query.trim())}&wordType=full&limit=30`);
+      const data = await res.json();
+      if (!res.ok || data.error) { setError(data.error?.message || "오류"); setResults([]); }
+      else { setResults(extractRows(data)); }
+    } catch { setError("서버 연결에 실패했습니다."); setResults([]); }
+    finally { setLoading(false); }
+  }, [query]);
+
+  const loadDetail = useCallback(async (id: string) => {
+    if (detail?.itemId === id) { setDetail(null); return; }
+    try { const r = await fetch(`/api/item-detail?itemId=${id}`); setDetail(await r.json()); } catch {}
+  }, [detail]);
+
+  const loadNewItemDetail = useCallback(async (id: string) => {
+    if (newItemDetail?.itemId === id) { setNewItemDetail(null); return; }
+    try { const r = await fetch(`/api/item-detail?itemId=${id}`); setNewItemDetail(await r.json()); } catch {}
+  }, [newItemDetail]);
+
+  return (
+    <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>던파 전체 아이템의 상세 스펙을 조회합니다.</p>
+        <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 닳아버린 순례의 증표, 광휘의 소울...)" buttonLabel="아이템 검색" />
+      </Card>
+
+      {/* ═══ 천해천 신규 아이템 섹션 ═══ */}
+      {!searched && (
+        <div style={{
+          background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+          borderRadius: 16,
+          padding: "20px 18px",
+          position: "relative",
+          overflow: "hidden",
+        }}>
+          {/* 배경 효과 */}
+          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+          {/* 헤더 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #7C3AED, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>🌊</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#F8FAFC", letterSpacing: "-0.02em" }}>천해천 신규 아이템</div>
+              <div style={{ fontSize: 10, color: "#64748B", marginTop: 1 }}>Lv.115 서약 · 결정 아이템</div>
+            </div>
+            <div style={{ padding: "3px 10px", borderRadius: 99, background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", fontSize: 10, fontWeight: 700, color: "#C084FC", letterSpacing: "0.02em" }}>NEW</div>
+          </div>
+
+          {/* 아이템 목록 */}
+          {newItemsLoading ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[...Array(4)].map((_, i) => <div key={i} className="skeleton" style={{ height: 52, borderRadius: 10 }} />)}
+            </div>
+          ) : newItems.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {newItems.map((item: any) => (
+                <div key={item.itemId}>
+                  <div
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      padding: "10px 14px", borderRadius: 10,
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                    onClick={() => loadNewItemDetail(item.itemId)}
+                    onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(168,85,247,0.25)"; }}
+                    onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)"; }}
+                  >
+                    <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={36} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {item.itemName}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#64748B", marginTop: 2, display: "flex", gap: 8 }}>
+                        <span>Lv.{item.itemAvailableLevel}</span>
+                        <span style={{ color: getRarityColor(item.itemRarity) }}>{item.itemRarity}</span>
+                        <span>{item.itemType}</span>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 500, background: `${getRarityColor(item.itemRarity)}18`, color: getRarityColor(item.itemRarity) }}>
+                      {item.itemName.includes("서약") ? "서약" : "결정"}
+                    </span>
+                  </div>
+                  {/* 아이템 상세 (클릭 시 펼쳐짐) */}
+                  {newItemDetail?.itemId === item.itemId && (
+                    <div className="animate-slide-up" style={{
+                      marginTop: 4, padding: "14px 16px", borderRadius: 10,
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(168,85,247,0.2)",
+                    }}>
+                      <div style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <span style={{ fontWeight: 600, color: "#F1F5F9" }}>{newItemDetail.itemName}</span>
+                        {newItemDetail.itemExplain && (
+                          <div style={{ color: "#94A3B8", lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: newItemDetail.itemExplain.replace(/\n/g, "<br/>") }} />
+                        )}
+                        {newItemDetail.itemFlavorText && (
+                          <div style={{ fontStyle: "italic", color: "#64748B" }}>{newItemDetail.itemFlavorText}</div>
+                        )}
+                        {newItemDetail.setItemName && (
+                          <div style={{ fontSize: 10, color: "#A78BFA" }}>세트: {newItemDetail.setItemName}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: "24px 0", textAlign: "center" }}>
+              <p style={{ fontSize: 12, color: "#475569" }}>해당 아이템을 찾을 수 없습니다.</p>
+            </div>
+          )}
+
+          {/* 하단 안내 */}
+          {newItems.length > 0 && (
+            <p style={{ fontSize: 10, color: "#475569", textAlign: "center", margin: "12px 0 0" }}>
+              아이템을 클릭하면 상세 정보를 확인할 수 있습니다 · 총 {newItems.length}건
+            </p>
+          )}
+        </div>
+      )}
+
+      {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
+      <ErrorMsg msg={error} />
+      {loading && <SkeletonList count={5} />}
+      {!loading && results.length > 0 && (
+        <div>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{results.length}건</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {results.map((item: any) => (
+              <div key={item.itemId}>
+                <div className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12, cursor: "pointer" }} onClick={() => loadDetail(item.itemId)}>
+                  <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>Lv.{item.itemAvailableLevel} · {item.itemType}</div>
+                  </div>
+                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, fontWeight: 500, background: `${getRarityColor(item.itemRarity)}10`, color: getRarityColor(item.itemRarity) }}>{item.itemRarity}</span>
+                </div>
+                {detail?.itemId === item.itemId && (
+                  <div className="card animate-slide-up" style={{ marginTop: 4, padding: "14px 16px", borderColor: "var(--color-primary)", background: "var(--color-surface)" }}>
+                    <div style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <span style={{ fontWeight: 600 }}>{detail.itemName}</span>
+                      {detail.itemExplain && <div style={{ color: "var(--text-secondary)" }} dangerouslySetInnerHTML={{ __html: detail.itemExplain.replace(/\n/g, "<br/>") }} />}
+                      {detail.itemFlavorText && <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>{detail.itemFlavorText}</div>}
+                      {detail.setItemName && <div style={{ fontSize: 10, color: "var(--color-primary)" }}>세트: {detail.setItemName}</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {!loading && searched && !results.length && !error && <Empty msg="검색 결과가 없습니다." />}
+    </div>
+  );
+}
 
 /* ═══ 세트 아이템 ═══ */
 function SetItemPanel() {
