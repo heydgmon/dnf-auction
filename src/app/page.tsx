@@ -274,7 +274,7 @@ function AlertPanel() {
                 </div>
 
                 {/* 경매장 최저가 */}
-                <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 8, padding: "10px 12px" }}>
+                <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "10px 12px" }}>
                   <div style={{ fontSize: 10, color: "#64748B", marginBottom: 4 }}>경매장 최저가</div>
                   {priceData?.loading ? (
                     <div style={{ fontSize: 16, fontWeight: 800, color: "#475569" }}>조회 중...</div>
@@ -428,30 +428,30 @@ function AuctionSearchPanel() {
       {/* ═══ 운명의 아르카나 패키지 카드 ═══ */}
       {!searched && (
         <div style={{
-          background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+          background: "var(--bg-card)",
+          border: "1px solid var(--border-color)",
           borderRadius: 16, padding: "22px 20px", position: "relative", overflow: "hidden",
         }}>
-          <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(147,51,234,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: -30, left: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(147,51,234,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -30, left: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
 
           {/* 헤더 */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
             <div style={{ width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg, #7C3AED, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🎴</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#F8FAFC", letterSpacing: "-0.02em" }}>패키지 구매 가이드</div>
-              <div style={{ fontSize: 10, color: "#64748B", marginTop: 1 }}>경매장 vs 세라샵 가격 비교</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", ... }}>패키지 구매 가이드</div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>경매장 vs 세라샵 가격 비교</div>
             </div>
             <div style={{ padding: "3px 10px", borderRadius: 99, background: "rgba(147,51,234,0.15)", border: "1px solid rgba(147,51,234,0.3)", fontSize: 10, fontWeight: 700, color: "#C084FC" }}>GUIDE</div>
           </div>
 
           {/* 질문 배너 */}
-          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 0, padding: "10px 14px", marginBottom: 14, borderLeft: "3px solid #A855F7", display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 14 }}>🤔</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#E2E8F0" }}>언제 사는 게 이득인가요?</span>
+          <div style={{ background: "var(--bg-primary)", ... borderLeft: "3px solid #A855F7", ... }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>언제 사는 게 이득인가요?</span>
           </div>
 
           {/* 메인 아이템 카드 */}
-          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: "16px", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 14 }}>
+          <div style={{ background: "var(--bg-primary)", borderRadius: 14, padding: "16px", border: "1px solid var(--border-color)", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
               {pkgData.loading ? (
                 <div className="skeleton" style={{ width: 52, height: 52, borderRadius: 10, flexShrink: 0 }} />
@@ -459,7 +459,7 @@ function AuctionSearchPanel() {
                 <ItemImg itemId={pkgData.itemId} itemName="운명의 아르카나 패키지" rarity={pkgData.itemRarity} size={52} />
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: "#F1F5F9", marginBottom: 4 }}>운명의 아르카나 패키지</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>운명의 아르카나 패키지</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {pkgData.itemRarity && (
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: `${getRarityColor(pkgData.itemRarity)}18`, color: getRarityColor(pkgData.itemRarity), fontWeight: 600 }}>{pkgData.itemRarity}</span>
@@ -471,17 +471,12 @@ function AuctionSearchPanel() {
 
             {/* 가격 비교 그리드 */}
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <div style={{ flex: 1, background: "rgba(0,0,0,0.25)", borderRadius: 10, padding: "12px" }}>
-                <div style={{ fontSize: 10, color: "#64748B", marginBottom: 6 }}>경매장 최저가</div>
-                {pkgData.loading ? (
-                  <div className="skeleton" style={{ height: 22, borderRadius: 4 }} />
-                ) : pkgData.lowestPrice > 0 ? (
-                  <>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: "#F59E0B", letterSpacing: "-0.02em" }}>{formatGold(pkgData.lowestPrice)}</div>
-                    <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>골드</div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#475569" }}>매물 없음</div>
+              <div style={{ flex: 1, background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: "12px" }}>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>경매장 최저가</div>
+                ...
+                <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>골드</div>
+                ...
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>매물 없음</div>
                 )}
               </div>
               <div style={{ flex: 1, background: "rgba(0,0,0,0.25)", borderRadius: 10, padding: "12px" }}>
