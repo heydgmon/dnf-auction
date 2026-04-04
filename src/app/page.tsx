@@ -1216,7 +1216,7 @@ function ItemSearchPanel() {
                                                 )}
                                                 {newItemDetail.setItemName && (
                                                   <div style={{ fontSize: 10, color: "var(--color-primary)" }}>세트: {newItemDetail.setItemName}</div>
-                                                )}
+
                         )}
                       </div>
                     </div>
