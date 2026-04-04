@@ -474,10 +474,15 @@ function AuctionSearchPanel() {
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <div style={{ flex: 1, background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: "12px" }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>경매장 최저가</div>
-                ...
-                <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>골드</div>
-                ...
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>매물 없음</div>
+                {pkgData.loading ? (
+                  <div className="skeleton" style={{ height: 22, borderRadius: 4 }} />
+                ) : pkgData.lowestPrice > 0 ? (
+                  <>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-accent)", letterSpacing: "-0.02em" }}>{formatGold(pkgData.lowestPrice)}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>골드</div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>매물 없음</div>
                 )}
               </div>
               <div style={{ flex: 1, background: "rgba(0,0,0,0.25)", borderRadius: 10, padding: "12px" }}>
