@@ -198,40 +198,41 @@ function AlertPanel() {
 
       {/* ═══ 천해천 업데이트 영향 분석 ═══ */}
       <div style={{
-        background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-color)",
         borderRadius: 16,
         padding: "24px 20px",
         position: "relative",
         overflow: "hidden",
       }}>
         {/* 배경 장식 */}
-        <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: -20, left: -20, width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(37,99,235,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -20, left: -20, width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         {/* 헤더 */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #D97706, #F59E0B)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>⚡</div>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#F8FAFC", letterSpacing: "-0.02em" }}>업데이트 영향 분석</div>
-            <div style={{ fontSize: 11, color: "#64748B", marginTop: 1 }}>천해천 패치 · 시장 영향 리포트</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>업데이트 영향 분석</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>천해천 패치 · 시장 영향 리포트</div>
           </div>
           <div style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 99, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", fontSize: 10, fontWeight: 700, color: "#F87171", letterSpacing: "0.02em" }}>HOT</div>
         </div>
 
         {/* 분석 문구 */}
-        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "14px 16px", marginBottom: 16, borderLeft: "3px solid #D97706" }}>
-          <p style={{ fontSize: 12, color: "#CBD5E1", lineHeight: 1.7, margin: 0 }}>
-            이번 <span style={{ color: "#F59E0B", fontWeight: 700 }}>천해천 업데이트</span>로 인해 콘텐츠 소모량이 증가하면서 소모성 아이템의 수요가 전반적으로 상승하는 흐름을 보이고 있습니다.
+        <div style={{ background: "var(--bg-primary)", borderRadius: 12, padding: "14px 16px", marginBottom: 16, borderLeft: "3px solid #D97706" }}>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0 }}>
+            이번 <span style={{ color: "var(--color-accent)", fontWeight: 700 }}>천해천 업데이트</span>로...
           </p>
-          <p style={{ fontSize: 12, color: "#CBD5E1", lineHeight: 1.7, margin: 0, marginTop: 6 }}>
-            특히 <span style={{ color: "#60A5FA", fontWeight: 600 }}>던전 플레이에서 사용되는 아이템</span>의 소비량이 빠르게 증가하고 있습니다.
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0, marginTop: 6 }}>
+            특히 <span style={{ color: "var(--color-primary)", fontWeight: 600 }}>던전 플레이에서 사용되는 아이템</span>의 소비량이 빠르게 증가하고 있습니다.
           </p>
         </div>
 
         {/* 추천 아이템 라벨 */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#F8FAFC" }}>📌 주목 아이템</div>
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>📌 주목 아이템</div>
+          <div style={{ flex: 1, height: 1, background: "var(--border-color)" }} />
         </div>
 
         {/* 추천 아이템 카드 2개 — ItemImg 사용 */}
@@ -244,16 +245,15 @@ function AlertPanel() {
             return (
               <div key={item.name} style={{
                 flex: "1 1 200px",
-                background: "rgba(255,255,255,0.05)",
+                background: "var(--bg-primary)",
                 borderRadius: 12,
                 padding: "14px 16px",
-                border: "1px solid rgba(255,255,255,0.06)",
+                border: "1px solid var(--border-color)",
                 transition: "all 0.2s",
                 cursor: "pointer",
               }}
-                onClick={() => { setAlertItem(item.name); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(37,99,235,0.3)"; }}
-                onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.06)"; }}
+                onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "var(--color-primary-light)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--color-primary)"; }}
+                onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-primary)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-color)"; }}
               >
                 {/* 아이템 상단 — 실제 아이템 이미지 사용 */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -263,7 +263,7 @@ function AlertPanel() {
                     <ItemImg itemId={priceData?.itemId || ""} itemName={item.name} rarity={priceData?.itemRarity} size={40} />
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#F1F5F9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.name}
                     </div>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 3, padding: "2px 8px", borderRadius: 99, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}>
