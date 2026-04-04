@@ -1142,21 +1142,22 @@ function ItemSearchPanel() {
       {/* ═══ 천해천 신규 아이템 섹션 ═══ */}
       {!searched && (
         <div style={{
-          background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+          background: "var(--bg-card)",
+          border: "1px solid var(--border-color)",
           borderRadius: 16,
           padding: "20px 18px",
           position: "relative",
           overflow: "hidden",
         }}>
-          {/* 배경 효과 */}
-          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
+        {/* 배경 효과 */}
+        <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
 
           {/* 헤더 */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #7C3AED, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>🌊</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#F8FAFC", letterSpacing: "-0.02em" }}>천해천 신규 아이템</div>
-              <div style={{ fontSize: 10, color: "#64748B", marginTop: 1 }}>Lv.115 서약 · 결정 아이템</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", ... }}>천해천 신규 아이템</div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>Lv.115 서약 · 결정 아이템</div>
             </div>
             <div style={{ padding: "3px 10px", borderRadius: 99, background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", fontSize: 10, fontWeight: 700, color: "#C084FC", letterSpacing: "0.02em" }}>NEW</div>
           </div>
@@ -1174,8 +1175,8 @@ function ItemSearchPanel() {
                     style={{
                       display: "flex", alignItems: "center", gap: 12,
                       padding: "10px 14px", borderRadius: 10,
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.06)",
+                      background: "var(--bg-primary)",
+                      border: "1px solid var(--border-color)",
                       cursor: "pointer",
                       transition: "all 0.15s",
                     }}
@@ -1202,19 +1203,14 @@ function ItemSearchPanel() {
                   {newItemDetail?.itemId === item.itemId && (
                     <div className="animate-slide-up" style={{
                       marginTop: 4, padding: "14px 16px", borderRadius: 10,
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(168,85,247,0.2)",
+                      background: "var(--color-primary-light)",
+                      border: "1px solid rgba(37,99,235,0.2)",
                     }}>
                       <div style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                        <span style={{ fontWeight: 600, color: "#F1F5F9" }}>{newItemDetail.itemName}</span>
-                        {newItemDetail.itemExplain && (
-                          <div style={{ color: "#94A3B8", lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: newItemDetail.itemExplain.replace(/\n/g, "<br/>") }} />
-                        )}
-                        {newItemDetail.itemFlavorText && (
-                          <div style={{ fontStyle: "italic", color: "#64748B" }}>{newItemDetail.itemFlavorText}</div>
-                        )}
-                        {newItemDetail.setItemName && (
-                          <div style={{ fontSize: 10, color: "#A78BFA" }}>세트: {newItemDetail.setItemName}</div>
+                        <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{newItemDetail.itemName}</span>
+                        <div style={{ color: "var(--text-secondary)", lineHeight: 1.6 }} ... />
+                        <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>{newItemDetail.itemFlavorText}</div>
+                        <div style={{ fontSize: 10, color: "var(--color-primary)" }}>세트: {newItemDetail.setItemName}</div>
                         )}
                       </div>
                     </div>
@@ -1230,7 +1226,7 @@ function ItemSearchPanel() {
 
           {/* 하단 안내 */}
           {newItems.length > 0 && (
-            <p style={{ fontSize: 10, color: "#475569", textAlign: "center", margin: "12px 0 0" }}>
+            <p style={{ fontSize: 10, color: "var(--text-muted)", textAlign: "center", margin: "12px 0 0" }}>
               아이템을 클릭하면 상세 정보를 확인할 수 있습니다 · 총 {newItems.length}건
             </p>
           )}
