@@ -439,14 +439,15 @@ function AuctionSearchPanel() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
             <div style={{ width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg, #7C3AED, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🎴</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", ... }}>패키지 구매 가이드</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>패키지 구매 가이드</div>
               <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>경매장 vs 세라샵 가격 비교</div>
             </div>
             <div style={{ padding: "3px 10px", borderRadius: 99, background: "rgba(147,51,234,0.15)", border: "1px solid rgba(147,51,234,0.3)", fontSize: 10, fontWeight: 700, color: "#C084FC" }}>GUIDE</div>
           </div>
 
           {/* 질문 배너 */}
-          <div style={{ background: "var(--bg-primary)", ... borderLeft: "3px solid #A855F7", ... }}>
+          <div style={{ background: "var(--bg-primary)", borderRadius: 0, padding: "10px 14px", marginBottom: 14, borderLeft: "3px solid #A855F7", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 14 }}>🤔</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>언제 사는 게 이득인가요?</span>
           </div>
 
