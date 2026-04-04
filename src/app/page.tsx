@@ -1156,7 +1156,7 @@ function ItemSearchPanel() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #7C3AED, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>🌊</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", ... }}>천해천 신규 아이템</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>천해천 신규 아이템</div>
               <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>Lv.115 서약 · 결정 아이템</div>
             </div>
             <div style={{ padding: "3px 10px", borderRadius: 99, background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", fontSize: 10, fontWeight: 700, color: "#C084FC", letterSpacing: "0.02em" }}>NEW</div>
@@ -1208,9 +1208,15 @@ function ItemSearchPanel() {
                     }}>
                       <div style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                         <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{newItemDetail.itemName}</span>
-                        <div style={{ color: "var(--text-secondary)", lineHeight: 1.6 }} ... />
-                        <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>{newItemDetail.itemFlavorText}</div>
-                        <div style={{ fontSize: 10, color: "var(--color-primary)" }}>세트: {newItemDetail.setItemName}</div>
+                        {newItemDetail.itemExplain && (
+                                                  <div style={{ color: "var(--text-secondary)", lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: newItemDetail.itemExplain.replace(/\n/g, "<br/>") }} />
+                                                )}
+                                                {newItemDetail.itemFlavorText && (
+                                                  <div style={{ fontStyle: "italic", color: "var(--text-muted)" }}>{newItemDetail.itemFlavorText}</div>
+                                                )}
+                                                {newItemDetail.setItemName && (
+                                                  <div style={{ fontSize: 10, color: "var(--color-primary)" }}>세트: {newItemDetail.setItemName}</div>
+                                                )}
                         )}
                       </div>
                     </div>
