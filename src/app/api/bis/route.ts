@@ -21,6 +21,11 @@ const HARDCODED_ITEMS: Record<string, HardcodedItem[]> = {
     { searchKeyword: "프로스트의 전설 플래티넘[100Lv]",   displayName: "프로스트의 전설 플래티넘[100Lv]" },
     { searchKeyword: "군자의 사계 플래티넘[30Lv]",       displayName: "군자의 사계 플래티넘[30Lv]" },
   ],
+  "크리쳐": [
+    { searchKeyword: "운명을 담는 재단사 플래티넘[75Lv] 알", displayName: "운명을 담는 재단사 플래티넘[75Lv] 알" },
+    { searchKeyword: "운명을 담는 재단사 플래티넘[45Lv] 알", displayName: "운명을 담는 재단사 플래티넘[45Lv] 알" },
+    { searchKeyword: "운명을 담는 재단사 알",                displayName: "운명을 담는 재단사 알" },
+  ],
   "오라": [
     { searchKeyword: "카드 오브 파툼 오라 상자",       displayName: "카드 오브 파툼 오라 상자" },
     { searchKeyword: "고결한 영혼의 잔상 오라 상자",   displayName: "고결한 영혼의 잔상 오라 상자" },
@@ -212,7 +217,7 @@ export async function GET() {
         continue;
       }
 
-      // ── 기존 로직: shared cache 기반 (크리쳐 등) ──
+      // ── 기존 로직: shared cache 기반 ──
       let categoryItems: { itemName: string; itemId: string; itemRarity: string; unitPrice: number }[] = [];
       for (const [type, items] of typeToItems) {
         if (cat.typeMatch(type)) {
