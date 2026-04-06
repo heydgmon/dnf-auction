@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Nav from "@/components/Nav";
+import { Footer } from "@/components/Nav";
 
 export const metadata: Metadata = {
   title: "던프 | 던파 경매장 시세 검색 — 아이템 최저가 한눈에",
@@ -23,7 +25,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           crossOrigin="anonymous"
         />
       </head>
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen">
+        <div className="min-h-screen flex flex-col">
+          <Nav />
+          <main style={{ flex: 1, maxWidth: 960, margin: "0 auto", width: "100%", padding: "24px 16px" }}>
+            {children}
+          </main>
+          <Footer />
+        </div>
+      </body>
     </html>
   );
 }
