@@ -17,7 +17,7 @@ export default function HomePage() {
           현재 경매장에 등록된 매물이 많은 아이템 순위입니다. 실시간 Neople Open API 데이터를 기반으로 경매장 등록 현황을 확인할 수 있습니다.
         </p>
       </section>
-      <HomeClient />
+      <HomeClient /> {/* HomeClient.tsx로 홈 화면에 뿌려주기 */}
     </>
   );
 }
