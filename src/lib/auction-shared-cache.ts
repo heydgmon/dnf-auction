@@ -3,7 +3,7 @@
  *
  * 서버 시작 시 한번 Neople API를 호출하여 경매장 등록 아이템을 수집.
  * trending, insight, bis API가 이 캐시를 공유.
- *
+ * 던파 경매장 데이터를 잠깐 저장해두는 공용 창고
  * ★ 핵심: 키워드를 매우 넓게 잡아서 칭호/크리쳐/오라/카드 등
  *   이름에 카테고리 단어가 없는 아이템도 수집
  */
@@ -11,13 +11,13 @@
 interface SharedCache {
   trendingItems: any[];
   allAuctionRows: any[];
-  updatedAt: number;
+  updatedAt: number; // trendingItems → 인기 아이템 목록 allAuctionRows → 원본 경매장 데이터 전체 updatedAt → 언제 저장했는지 시간
 }
 
 let sharedCache: SharedCache | null = null;
 let buildPromise: Promise<SharedCache | null> | null = null;
 
-const CACHE_TTL = 3 * 60 * 1000;
+const CACHE_TTL = 3 * 60 * 1000; //저장한 데이터는 3분 동안 유효하다
 const API_BASE = "https://api.neople.co.kr";
 
 // ── 광범위 키워드 ──
@@ -92,7 +92,7 @@ async function buildData(): Promise<SharedCache | null> {
         itemRarity: row.itemRarity || "",
         itemId: row.itemId || "",
         itemType: row.itemType || "",
-      });
+      }); //같은 이름의 아이템을 묶어서 몇 개 등록됐는지 세기 위한 도구
     }
   }
 
