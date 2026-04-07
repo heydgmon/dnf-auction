@@ -4,7 +4,7 @@ import {
   getMultiItemPriceHistory,
   DailyPriceRecord,
 } from "@/lib/price-history";
-import { ensureSnapshotCollected } from "@/app/api/price-snapshot/route";
+import { ensureSnapshotCollected } from "@/lib/snapshot-collector";
 
 export const dynamic = "force-dynamic";
 
