@@ -88,9 +88,8 @@ export default function SoldClient() {
   const fetchHistory = useCallback(async (name: string) => {
     setChartLoading(true);
     try {
-      const matched = insightItems.find((it: any) => it.itemName === name || it.itemName.includes(name) || name.includes(it.itemName));
-      let url = `/api/auction-sold-history?itemName=${encodeURIComponent(name)}&wordType=match`;
-      if (matched?.trades?.length > 0) url += `&insightData=${encodeURIComponent(JSON.stringify(matched))}`;
+      // ★ DynamoDB 기반 히스토리 조회 (7일)
+      let url = `/api/auction-sold-history?itemName=${encodeURIComponent(name)}&wordType=match&days=7`;
       const res = await fetch(url);
       const data = await res.json();
       const cd: { date: string; avg: number; count: number }[] = data.chartRows || [];
@@ -100,7 +99,7 @@ export default function SoldClient() {
       return data.recentRows || [];
     } catch { return []; }
     finally { setChartLoading(false); }
-  }, [insightItems]);
+  }, []);
 
   const search = useCallback(async () => {
     if (!query.trim()) return;
@@ -137,9 +136,10 @@ export default function SoldClient() {
         {chartMode === "overview" && insightItems.length > 0 && (<div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>{insightItems.slice(0, 6).map((item, i) => (<button key={item.itemName} onClick={() => handleChipClick(item.itemName)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, padding: "3px 8px", borderRadius: 20, border: `0.5px solid ${COLORS[i]}40`, background: `${COLORS[i]}12`, color: COLORS[i], cursor: "pointer" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS[i], display: "inline-block" }} />{item.itemName}</button>))}</div>)}
         {chartMode === "search" && chartData.length > 0 && (() => {
           const prices = chartData.map(d => d.avg); const latest = prices[prices.length - 1]; const totalVol = chartData.reduce((s, d) => s + d.count, 0);
-          const half = Math.ceil(prices.length / 2); const recentAvg = prices.slice(-half).reduce((s, v) => s + v, 0) / half;
-          const olderAvg = prices.slice(0, prices.length - half).reduce((s, v) => s + v, 0) / Math.max(prices.length - half, 1);
-          const change = olderAvg > 0 ? Math.round(((recentAvg - olderAvg) / olderAvg) * 10000) / 100 : 0; const isUp = change >= 0;
+          // ★ 변동률: 첫째 날 vs 마지막 날
+          const firstPrice = prices[0];
+          const change = firstPrice > 0 ? Math.round(((latest - firstPrice) / firstPrice) * 10000) / 100 : 0;
+          const isUp = change >= 0;
           return (<div style={{ display: "flex", gap: 8, marginTop: 12 }}>{[{ label: "최근 평균가", value: `${latest.toLocaleString()}G` }, { label: "기간 변동", value: `${isUp ? "+" : ""}${change}%`, color: isUp ? "#E24B4A" : "#378ADD" }, { label: "거래 건수", value: `${totalVol}건` }].map(({ label, value, color }) => (<div key={label} style={{ flex: 1, background: "var(--bg-primary)", borderRadius: 8, padding: "8px 10px" }}><div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div><div style={{ fontSize: 13, fontWeight: 600, color: color || "var(--text-primary)" }}>{value}</div></div>))}</div>);
         })()}
       </Card>

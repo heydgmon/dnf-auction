@@ -1,18 +1,17 @@
-// src/app/api/auction-sold-history/route.ts
-//
-// 차트용 7일치 시세 히스토리
-//
-// 전략:
-// 1. 프론트에서 인사이트 데이터(insightData)를 전달하면 → 그것을 차트에 사용 (이미 7일치)
-// 2. 없으면 → auction-sold 단일 호출 (거래 적은 아이템은 이것만으로도 여러 날짜 커버)
-//
-// [API 한계 설명]
-// Neople auction-sold에는 커서/오프셋이 없어서 동일 요청을 N번 해도
-// 항상 같은 최신 데이터만 반환됩니다.
-// 거래가 매우 많은 아이템(무색 큐브 조각 등)은 구조적으로 당일 데이터만 나옵니다.
+/**
+ * /api/auction-sold-history
+ *
+ * 차트용 시세 히스토리 API
+ *
+ * 변경점:
+ * 1. DynamoDB에서 7일/30일 히스토리 조회 → 차트 데이터
+ * 2. auction-sold에서 당일 실시간 거래 내역 → 리스트 데이터
+ * 3. DB에 데이터 없으면 기존 auction-sold fallback
+ */
 
 import { NextRequest, NextResponse } from "next/server";
 import { neopleGet } from "@/lib/neople";
+import { getItemPriceHistory } from "@/lib/price-history";
 
 export const dynamic = "force-dynamic";
 
@@ -27,40 +26,84 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const itemName = searchParams.get("itemName") || "";
   const wordType = searchParams.get("wordType") || "match";
-  const insightDataRaw = searchParams.get("insightData");
+  const daysParam = searchParams.get("days");
+  const days = daysParam ? Math.min(Number(daysParam), 30) : 7;
 
   if (!itemName) {
-    return NextResponse.json({ chartRows: [], recentRows: [], error: "itemName required" }, { status: 400 });
+    return NextResponse.json(
+      { chartRows: [], recentRows: [], error: "itemName required" },
+      { status: 400 }
+    );
   }
 
   try {
-    // ── 1. 인사이트 데이터가 있으면 그것을 차트에 사용 ──
-    if (insightDataRaw) {
-      try {
-        const insightItem = JSON.parse(decodeURIComponent(insightDataRaw));
-        if (insightItem?.trades?.length > 0) {
-          const chartRows = insightItem.trades.map((t: any) => ({
-            date: t.date,
-            avg: t.unitPrice,
-            count: t.count || 1,
-          }));
+    // ── 1. DynamoDB에서 히스토리 조회 ──
+    const dbRecords = await getItemPriceHistory(itemName, days);
 
-          // 리스트용 최신 거래는 별도로 100건 조회
-          const { data: soldData, ok: soldOk } = await neopleGet("/df/auction-sold", {
-            itemName,
-            wordType,
-            limit: "100",
-          });
-          const recentRows = soldOk && soldData.rows
-            ? (soldData.rows as any[]).filter(r => (r.itemName as string).includes(itemName))
-            : [];
+    // ── 2. auction-sold에서 당일 실시간 데이터 ──
+    let recentRows: any[] = [];
+    try {
+      const { data: soldData, ok: soldOk } = await neopleGet(
+        "/df/auction-sold",
+        { itemName, wordType, limit: "100" }
+      );
+      if (soldOk && soldData.rows) {
+        recentRows = (soldData.rows as any[]).filter(r =>
+          (r.itemName as string).includes(itemName)
+        );
+      }
+    } catch {}
 
-          return NextResponse.json({ chartRows, recentRows, source: "insight" });
+    // ── 3. DB 데이터가 있으면 차트에 사용 ──
+    if (dbRecords.length > 0) {
+      // DB 레코드 → chartRows 변환
+      const chartRows = dbRecords.map(rec => ({
+        date: rec.date,
+        avg: rec.avgPrice,
+        count: rec.totalVolume,
+        min: rec.minPrice,
+        max: rec.maxPrice,
+      }));
+
+      // 오늘 당일 실시간 데이터로 마지막 포인트 업데이트/추가
+      const today = new Date().toISOString().slice(0, 10);
+      const todayRows = recentRows.filter(r =>
+        (r.soldDate || "").startsWith(today)
+      );
+      if (todayRows.length > 0) {
+        const prices = todayRows.map((r: any) => r.unitPrice).filter(Boolean);
+        const volumes = todayRows.reduce((s: number, r: any) => s + (r.count || 1), 0);
+        if (prices.length > 0) {
+          const cleaned = removeOutliers(prices);
+          const avg = cleaned.length > 0
+            ? Math.round(cleaned.reduce((s, v) => s + v, 0) / cleaned.length)
+            : Math.round(prices.reduce((s, v) => s + v, 0) / prices.length);
+
+          const existingIdx = chartRows.findIndex(r => r.date === today);
+          const todayPoint = {
+            date: today,
+            avg,
+            count: volumes,
+            min: Math.min(...prices),
+            max: Math.max(...prices),
+          };
+          if (existingIdx >= 0) {
+            chartRows[existingIdx] = todayPoint;
+          } else {
+            chartRows.push(todayPoint);
+          }
         }
-      } catch {}
+      }
+
+      return NextResponse.json({
+        chartRows,
+        recentRows,
+        source: "dynamodb",
+        dbDays: dbRecords.length,
+      });
     }
 
-    // ── 2. Fallback: auction-sold 단일 호출 ──
+    // ── 4. Fallback: DB 데이터 없으면 auction-sold 단일 호출 ──
     const { data, ok } = await neopleGet("/df/auction-sold", {
       itemName,
       wordType,
@@ -82,13 +125,12 @@ export async function GET(request: NextRequest) {
       if (!d || !r.unitPrice) continue;
       const e = dateMap.get(d) || { prices: [], txCount: 0 };
       e.prices.push(r.unitPrice);
-      e.txCount += 1;
+      e.txCount += r.count || 1;
       dateMap.set(d, e);
     }
 
-    const today = new Date();
-    const cutoff = new Date(today);
-    cutoff.setDate(today.getDate() - 6);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - (days - 1));
     const cutoffStr = cutoff.toISOString().slice(0, 10);
 
     const chartRows = [...dateMap.entries()]
@@ -102,12 +144,21 @@ export async function GET(request: NextRequest) {
         return { date, avg, count: txCount };
       });
 
-    const recentRows = [...filtered]
-      .sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""))
-      .slice(0, 100);
+    if (!recentRows.length) {
+      recentRows = [...filtered]
+        .sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""))
+        .slice(0, 100);
+    }
 
-    return NextResponse.json({ chartRows, recentRows, source: "auction-sold" });
+    return NextResponse.json({
+      chartRows,
+      recentRows,
+      source: "auction-sold",
+    });
   } catch (err: any) {
-    return NextResponse.json({ chartRows: [], recentRows: [], error: err.message }, { status: 502 });
+    return NextResponse.json(
+      { chartRows: [], recentRows: [], error: err.message },
+      { status: 502 }
+    );
   }
 }
