@@ -1,3 +1,18 @@
+/**
+ * [BIS API]
+ * 던전앤파이터 종결템(칭호, 크리쳐, 오라, 마법부여) 시세 데이터를 제공하는 API
+ * ■ 주요 기능
+ * - 카테고리별 Top 아이템 3개 선정
+ * - 실거래(경매 완료) 데이터를 기반으로 평균 체결가 계산
+ * - 경매장 현재 최저가와 비교
+ * - 이상치(outlier) 제거 후 평균 산출
+ *
+ * ■ 특징
+ * - 이상치 제거 로직 적용 (median 기반)
+ * - 시세 데이터 없을 경우 자동 fallback
+ * - 5분 TTL 캐싱
+ * - shared cache와 병행 사용
+ */
 import { NextResponse } from "next/server";
 import { neopleGet } from "@/lib/neople";
 import { isSharedCacheValid, getSharedCache, getSharedBuildPromise } from "@/lib/auction-shared-cache";
@@ -39,10 +54,10 @@ const HARDCODED_ITEMS: Record<string, HardcodedItem[]> = {
 };
 
 const CATEGORIES = [
-  { category: "칭호",    emoji: "👑", typeMatch: (t: string) => t === "칭호" },
-  { category: "크리쳐",  emoji: "🐉", typeMatch: (t: string) => t === "크리쳐" },
-  { category: "오라",    emoji: "✨", typeMatch: (t: string) => t === "오라" },
-  { category: "마법부여", emoji: "🃏", typeMatch: (t: string) => t === "카드" || t === "엠블렘" || t.includes("마법부여") },
+  { category: "칭호",    emoji: "•", typeMatch: (t: string) => t === "칭호" },
+  { category: "크리쳐",  emoji: "•", typeMatch: (t: string) => t === "크리쳐" },
+  { category: "오라",    emoji: "•", typeMatch: (t: string) => t === "오라" },
+  { category: "마법부여", emoji: "•", typeMatch: (t: string) => t === "카드" || t === "엠블렘" || t.includes("마법부여") },
 ];
 
 function removeOutliers(prices: number[]): number[] {
