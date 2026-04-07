@@ -50,7 +50,7 @@ export default function SetItemsClient() {
       {/* 🔍 검색 영역 */}
       <Card>
         <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
-           세트 아이템 검색
+          📦 세트 아이템 검색
         </h2>
 
         <div style={{ display: "flex", gap: 8 }}>
@@ -87,7 +87,7 @@ export default function SetItemsClient() {
       {/* 📦 연도별 */}
       <Card>
         <h2 style={{ fontSize: 15, fontWeight: 700 }}>
-           연도별 세트 아이템
+          📅 연도별 세트 아이템
         </h2>
       </Card>
 
