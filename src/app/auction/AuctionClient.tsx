@@ -137,7 +137,6 @@ export default function AuctionClient() {
             <div style={{ padding: "3px 10px", borderRadius: 99, background: "rgba(147,51,234,0.15)", border: "1px solid rgba(147,51,234,0.3)", fontSize: 10, fontWeight: 700, color: "#C084FC" }}>GUIDE</div>
           </div>
           <div style={{ background: "var(--bg-primary)", borderRadius: 0, padding: "10px 14px", marginBottom: 14, borderLeft: "3px solid #A855F7", display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 14 }}>🤔</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>언제 사는 게 이득인가요?</span>
           </div>
           <div style={{ background: "var(--bg-primary)", borderRadius: 14, padding: "16px", border: "1px solid var(--border-color)", marginBottom: 14 }}>
