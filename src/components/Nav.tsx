@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/sold", label: "시세" },
   { href: "/items", label: "아이템 DB" },
   { href: "/setitems", label: "세트 아이템" },
+  { href: "/guide", label: "던린이 가이드" },
 ];
 
 export default function Nav() {
@@ -40,8 +41,19 @@ export default function Nav() {
         </Link>
         <nav className="hidden md:flex" style={{ gap: 4 }}>
           {NAV_ITEMS.map((t) => (
-            <Link key={t.href} href={t.href} className={`nav-tab ${pathname === t.href ? "active" : ""}`} style={{ textDecoration: "none" }}>
-              {t.label}
+            <Link
+              key={t.href}
+              href={t.href}
+              className={`nav-tab ${pathname === t.href ? "active" : ""}`}
+              style={{
+                textDecoration: "none",
+                ...(t.href === "/guide" && pathname !== t.href ? {
+                  color: "var(--color-accent)",
+                  border: "1px solid var(--color-accent-light)",
+                } : {}),
+              }}
+            >
+              {t.href === "/guide" ? "🎮 " : ""}{t.label}
             </Link>
           ))}
         </nav>
@@ -50,8 +62,8 @@ export default function Nav() {
           {menuOpen && (
             <div className="animate-slide-down" style={{ position: "absolute", right: 0, top: "100%", marginTop: 4, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", minWidth: 160, zIndex: 50, padding: "4px 0" }}>
               {NAV_ITEMS.map((t) => (
-                <Link key={t.href} href={t.href} onClick={() => setMenuOpen(false)} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 12, textDecoration: "none", color: pathname === t.href ? "var(--color-primary)" : "var(--text-secondary)", background: pathname === t.href ? "var(--color-primary-light)" : "transparent" }}>
-                  {t.label}
+                <Link key={t.href} href={t.href} onClick={() => setMenuOpen(false)} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 12, textDecoration: "none", color: pathname === t.href ? "var(--color-primary)" : t.href === "/guide" ? "var(--color-accent)" : "var(--text-secondary)", background: pathname === t.href ? "var(--color-primary-light)" : "transparent" }}>
+                  {t.href === "/guide" ? "🎮 " : ""}{t.label}
                 </Link>
               ))}
             </div>
