@@ -1,3 +1,21 @@
+/**
+
+* [시세 스냅샷 저장 트리거 흐름]
+*
+* 1. 사용자가 "경매장" 또는 "시세" 탭 클릭
+* 2. /api/market-insight API 호출
+* 3. buildInsightData() 실행
+* 4. ensureSnapshotCollected() 호출 (오늘 스냅샷 존재 여부 확인)
+* 5. collectAndSaveSnapshot() 실행 (미수집 시 데이터 수집)
+* 6. saveDailyPricesBatch() 호출 (DynamoDB 배치 저장)
+* 7. DynamoDB에 일별 시세 데이터 저장 완료
+*
+* ※ 특징:
+* * 사용자 요청 기반 lazy 트리거 방식
+* * 하루 1회 저장 (메모리 기준 중복 방지)
+* * 서버 시작 시가 아닌, API 최초 호출 시 실행될 수 있음
+    */
+
 import { NextResponse } from "next/server";
 import { neopleGet } from "@/lib/neople";
 import {
