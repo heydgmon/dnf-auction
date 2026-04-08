@@ -11,7 +11,7 @@ permissions:
 
 env:
   AWS_REGION: ap-northeast-2
-  AWS_ACCOUNT_ID: 604227045332
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   ECR_REPOSITORY: dnf-auction
   ECS_CLUSTER: dnf-auction-cluster
   ECS_SERVICE: dnf-auction-service-o4o5405p
@@ -28,7 +28,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::604227045332:role/githubactions
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/githubactions
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
