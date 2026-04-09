@@ -8,70 +8,12 @@ import {
   AutocompleteSearch, SearchHelpers, addRecent, filterByItemName,
 } from "@/components/shared";
 
-// 가격대별로 골고루 섞어 6개 추출 (비싼 2 / 중간 2 / 싼 2)
-function selectBalancedItems(items: any[]): any[] {
-  if (items.length <= 6) return items;
-
-  const withPrice = items
-    .map(item => ({
-      item,
-      price: item.avgPrice || (item.trades?.length > 0 ? item.trades[item.trades.length - 1].unitPrice : 0),
-    }))
-    .filter(({ price }) => price > 0)
-    .sort((a, b) => b.price - a.price);
-
-  if (withPrice.length <= 6) return withPrice.map(({ item }) => item);
-
-  const total = withPrice.length;
-  const expensive = withPrice.slice(0, Math.ceil(total * 0.25)).slice(0, 2);
-  const cheap = withPrice.slice(Math.floor(total * 0.75)).slice(0, 2);
-  const midStart = Math.floor(total * 0.4);
-  const mid = withPrice.slice(midStart, midStart + 2);
-
-  const seen = new Set<string>();
-  const unique: any[] = [];
-  for (const { item } of [...expensive, ...mid, ...cheap]) {
-    if (!seen.has(item.itemName)) {
-      seen.add(item.itemName);
-      unique.push(item);
-    }
-  }
-  for (const { item } of withPrice) {
-    if (unique.length >= 6) break;
-    if (!seen.has(item.itemName)) {
-      seen.add(item.itemName);
-      unique.push(item);
-    }
-  }
-  return unique.slice(0, 6);
-}
-
 // Y축 tick 포매터
 function formatYTick(v: any): string {
   const n = Number(v);
   if (n >= 100_000_000) return (n / 100_000_000).toFixed(1) + "억";
   if (n >= 10_000) return Math.round(n / 10_000) + "만";
   return n.toLocaleString();
-}
-
-// 데이터셋 전체 가격에서 min/max 추출 후 여백 포함 Y축 범위 계산
-function calcYRange(datasets: { data: { y: number }[] }[]): { min: number; max: number } {
-  const allPrices: number[] = [];
-  for (const ds of datasets) {
-    for (const pt of ds.data) {
-      if (pt.y > 0) allPrices.push(pt.y);
-    }
-  }
-  if (allPrices.length === 0) return { min: 0, max: 1 };
-
-  const rawMin = Math.min(...allPrices);
-  const rawMax = Math.max(...allPrices);
-  const range = rawMax - rawMin || rawMax;
-  const pad = range * 0.15;
-  return {
-    min: Math.max(0, rawMin - pad),
-    max: rawMax + pad,
-  };
 }
 
 // 단일 가격 배열에서 Y축 범위 계산
@@ -88,17 +30,63 @@ function calcSingleYRange(prices: number[]): { min: number; max?: number } {
   };
 }
 
-// 인사이트 데이터 → 차트용 멀티 데이터셋
+// 인사이트 데이터 → 차트용 멀티 데이터셋 (% 변동률 기반)
+const COLORS = [
+  "#E24B4A","#378ADD","#1D9E75","#EF9F27","#7F77DD",
+  "#D85A30","#D4537E","#639922","#2196F3","#FF5722",
+  "#009688","#795548","#607D8B","#E91E63","#3F51B5",
+  "#00BCD4","#CDDC39","#FF9800","#8BC34A","#673AB7",
+];
+
 function buildOverviewDatasets(items: any[]) {
-  const COLORS = ["#E24B4A","#378ADD","#1D9E75","#EF9F27","#7F77DD","#D85A30","#D4537E","#639922"];
-  const balanced = selectBalancedItems(items);
-  return balanced.map((item, i) => ({
-    label: item.itemName,
-    data: item.trades.map((t: any) => ({ x: t.date, y: t.unitPrice })),
-    borderColor: COLORS[i % COLORS.length],
-    backgroundColor: COLORS[i % COLORS.length] + "18",
-    borderWidth: 1.5, pointRadius: 2, tension: 0.35, fill: false, yAxisID: "y",
-  }));
+  // 모든 아이템 사용 (최대 20개)
+  const allItems = items.slice(0, 20);
+
+  return allItems.map((item, i) => {
+    const trades = item.trades || [];
+    if (trades.length === 0) return null;
+
+    // 첫 번째 가격을 기준으로 % 변동률 계산
+    const basePrice = trades[0].unitPrice;
+    if (!basePrice || basePrice <= 0) return null;
+
+    const normalizedData = trades.map((t: any) => ({
+      x: t.date,
+      y: ((t.unitPrice - basePrice) / basePrice) * 100, // % 변동
+    }));
+
+    return {
+      label: item.itemName,
+      data: normalizedData,
+      borderColor: COLORS[i % COLORS.length],
+      backgroundColor: COLORS[i % COLORS.length] + "18",
+      borderWidth: 1.5,
+      pointRadius: 2,
+      tension: 0.35,
+      fill: false,
+      yAxisID: "y",
+    };
+  }).filter(Boolean);
+}
+
+// % 변동률 데이터셋의 Y축 범위 계산
+function calcPercentYRange(datasets: any[]): { min: number; max: number } {
+  const allValues: number[] = [];
+  for (const ds of datasets) {
+    for (const pt of ds.data) {
+      if (typeof pt.y === "number" && isFinite(pt.y)) allValues.push(pt.y);
+    }
+  }
+  if (allValues.length === 0) return { min: -5, max: 5 };
+
+  const rawMin = Math.min(...allValues);
+  const rawMax = Math.max(...allValues);
+  const range = rawMax - rawMin || 5;
+  const pad = range * 0.15;
+  return {
+    min: rawMin - pad,
+    max: rawMax + pad,
+  };
 }
 
 function PriceChart({ chartData, mode, itemName, insightItems }: {
@@ -127,7 +115,7 @@ function PriceChart({ chartData, mode, itemName, insightItems }: {
 
       if (mode === "overview" && insightItems.length > 0) {
         const datasets = buildOverviewDatasets(insightItems);
-        const { min, max } = calcYRange(datasets);
+        const { min, max } = calcPercentYRange(datasets);
 
         chartRef.current = new Chart(ctx, {
           type: "line",
@@ -140,7 +128,16 @@ function PriceChart({ chartData, mode, itemName, insightItems }: {
               legend: { display: false },
               tooltip: {
                 callbacks: {
-                  label: (c: any) => ` ${c.dataset.label}: ${Number(c.parsed.y).toLocaleString()}G`,
+                  label: (c: any) => {
+                    const pct = Number(c.parsed.y).toFixed(1);
+                    const sign = Number(c.parsed.y) >= 0 ? "+" : "";
+                    // 원래 가격도 표시
+                    const item = insightItems.find((it: any) => it.itemName === c.dataset.label);
+                    const trades = item?.trades || [];
+                    const trade = trades.find((t: any) => t.date === c.parsed.x);
+                    const priceStr = trade ? ` (${Number(trade.unitPrice).toLocaleString()}G)` : "";
+                    return ` ${c.dataset.label}: ${sign}${pct}%${priceStr}`;
+                  },
                 },
               },
             },
@@ -158,9 +155,21 @@ function PriceChart({ chartData, mode, itemName, insightItems }: {
                   color: tickColor,
                   font: { size: 10 },
                   maxTicksLimit: 6,
-                  callback: formatYTick,
+                  callback: (v: any) => {
+                    const n = Number(v);
+                    const sign = n >= 0 ? "+" : "";
+                    return `${sign}${n.toFixed(0)}%`;
+                  },
                 },
-                grid: { color: gridColor },
+                grid: {
+                  color: (ctx: any) => {
+                    // 0% 라인을 더 진하게
+                    if (ctx.tick && ctx.tick.value === 0) {
+                      return isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)";
+                    }
+                    return gridColor;
+                  },
+                },
               },
             },
           },
@@ -258,7 +267,7 @@ function PriceChart({ chartData, mode, itemName, insightItems }: {
     };
   }, [mode, chartData, insightItems]);
 
-  return (<div style={{ position: "relative", width: "100%", height: 220 }}><canvas ref={canvasRef} /></div>);
+  return (<div style={{ position: "relative", width: "100%", height: 260 }}><canvas ref={canvasRef} /></div>);
 }
 
 export default function SoldClient() {
@@ -272,7 +281,7 @@ export default function SoldClient() {
   const [insightItems, setInsightItems] = useState<any[]>([]);
   const [chartData, setChartData] = useState<{ date: string; avg: number; count: number }[]>([]);
   const [chartMode, setChartMode] = useState<"overview" | "search">("overview");
-  const [chartTitle, setChartTitle] = useState("인기 아이템 시세 흐름");
+  const [chartTitle, setChartTitle] = useState("인기 아이템 시세 변동률");
 
   useEffect(() => {
     fetch("/api/market-insight").then(r => r.json()).then(d => setInsightItems(d.items || [])).catch(() => {});
@@ -288,7 +297,7 @@ export default function SoldClient() {
       const cd: { date: string; avg: number; count: number }[] = data.chartRows || [];
       setChartData(cd);
       setChartMode(cd.length > 0 ? "search" : "overview");
-      setChartTitle(cd.length > 0 ? `"${name}" 시세 추이 (${cd.length}일)` : "인기 아이템 시세 흐름");
+      setChartTitle(cd.length > 0 ? `"${name}" 시세 추이 (${cd.length}일)` : "인기 아이템 시세 변동률");
       return data.recentRows || [];
     } catch { return []; }
     finally { setChartLoading(false); }
@@ -308,7 +317,7 @@ export default function SoldClient() {
       setError("서버 연결에 실패했습니다.");
       setResults([]);
       setChartMode("overview");
-      setChartTitle("인기 아이템 시세 흐름");
+      setChartTitle("인기 아이템 시세 변동률");
     } finally { setLoading(false); }
   }, [query, fetchHistory]);
 
@@ -317,7 +326,7 @@ export default function SoldClient() {
       setSearched(false);
       setResults([]);
       setChartMode("overview");
-      setChartTitle("인기 아이템 시세 흐름");
+      setChartTitle("인기 아이템 시세 변동률");
       setChartData([]);
     }
   }, [query]);
@@ -327,8 +336,8 @@ export default function SoldClient() {
     await fetchHistory(name);
   }, [fetchHistory]);
 
-  const balancedChipItems = selectBalancedItems(insightItems);
-  const COLORS = ["#E24B4A","#378ADD","#1D9E75","#EF9F27","#7F77DD","#D85A30"];
+  // 모든 아이템 표시 (최대 20개)
+  const allChipItems = insightItems.slice(0, 20);
 
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -341,27 +350,27 @@ export default function SoldClient() {
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{chartTitle}</div>
             <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
-              {chartMode === "overview" ? "실체결 기준 · 인기 아이템 시세 흐름" : "실체결 기준 · 일별 평균가 + 거래량"}
+              {chartMode === "overview" ? "실체결 기준 · 첫날 대비 % 변동률 · 20개 아이템" : "실체결 기준 · 일별 평균가 + 거래량"}
             </div>
           </div>
           {chartMode === "search" && (
             <button
-              onClick={() => { setChartMode("overview"); setChartTitle("인기 아이템 시세 흐름"); setChartData([]); }}
+              onClick={() => { setChartMode("overview"); setChartTitle("인기 아이템 시세 변동률"); setChartData([]); }}
               style={{ fontSize: 10, padding: "4px 10px", borderRadius: 20, border: "0.5px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-muted)", cursor: "pointer" }}>
               전체 보기
             </button>
           )}
         </div>
         {chartLoading
-          ? (<div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 12, color: "var(--text-muted)" }}>차트 로딩 중...</div></div>)
+          ? (<div style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 12, color: "var(--text-muted)" }}>차트 로딩 중...</div></div>)
           : (<PriceChart chartData={chartData} mode={chartMode} itemName={query} insightItems={insightItems} />)
         }
-        {chartMode === "overview" && balancedChipItems.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-            {balancedChipItems.map((item, i) => (
+        {chartMode === "overview" && allChipItems.length > 0 && (
+          <div style={{ maxHeight: 80, overflowY: "auto", display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12, padding: "2px 0" }}>
+            {allChipItems.map((item, i) => (
               <button key={item.itemName} onClick={() => handleChipClick(item.itemName)}
-                style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, padding: "3px 8px", borderRadius: 20, border: `0.5px solid ${COLORS[i]}40`, background: `${COLORS[i]}12`, color: COLORS[i], cursor: "pointer" }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS[i], display: "inline-block" }} />
+                style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, padding: "3px 8px", borderRadius: 20, border: `0.5px solid ${COLORS[i % COLORS.length]}40`, background: `${COLORS[i % COLORS.length]}12`, color: COLORS[i % COLORS.length], cursor: "pointer", whiteSpace: "nowrap" }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS[i % COLORS.length], display: "inline-block", flexShrink: 0 }} />
                 {item.itemName}
               </button>
             ))}
