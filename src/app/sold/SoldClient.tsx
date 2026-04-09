@@ -8,10 +8,61 @@ import {
   AutocompleteSearch, SearchHelpers, addRecent, filterByItemName,
 } from "@/components/shared";
 
+// 가격대별로 골고루 섞어 6개 추출
+// 비싼 것 2개 / 중간 2개 / 싼 것 2개
+function selectBalancedItems(items: any[]): any[] {
+  if (items.length <= 6) return items;
+
+  // avgPrice 기준으로 정렬 (없으면 trades 마지막 unitPrice 사용)
+  const withPrice = items
+    .map(item => ({
+      item,
+      price: item.avgPrice || (item.trades?.length > 0 ? item.trades[item.trades.length - 1].unitPrice : 0),
+    }))
+    .filter(({ price }) => price > 0)
+    .sort((a, b) => b.price - a.price);
+
+  if (withPrice.length <= 6) return withPrice.map(({ item }) => item);
+
+  const total = withPrice.length;
+  // 비싼 2개: 상위 구간
+  const expensive = withPrice.slice(0, Math.ceil(total * 0.25)).slice(0, 2);
+  // 싼 2개: 하위 구간
+  const cheap = withPrice.slice(Math.floor(total * 0.75)).slice(0, 2);
+  // 중간 2개: 중간 구간
+  const midStart = Math.floor(total * 0.4);
+  const mid = withPrice.slice(midStart, midStart + 2);
+
+  // 중복 제거 후 합치기
+  const selected = [...expensive, ...mid, ...cheap];
+  const seen = new Set<string>();
+  const unique: any[] = [];
+  for (const { item } of selected) {
+    if (!seen.has(item.itemName)) {
+      seen.add(item.itemName);
+      unique.push(item);
+    }
+  }
+
+  // 6개가 안 되면 나머지에서 보충
+  if (unique.length < 6) {
+    for (const { item } of withPrice) {
+      if (!seen.has(item.itemName)) {
+        seen.add(item.itemName);
+        unique.push(item);
+      }
+      if (unique.length >= 6) break;
+    }
+  }
+
+  return unique.slice(0, 6);
+}
+
 // 인사이트 데이터 → 차트용 멀티 데이터셋
 function buildOverviewDatasets(items: any[]) {
   const COLORS = ["#E24B4A","#378ADD","#1D9E75","#EF9F27","#7F77DD","#D85A30","#D4537E","#639922"];
-  return items.slice(0, 6).map((item, i) => ({
+  const balanced = selectBalancedItems(items);
+  return balanced.map((item, i) => ({
     label: item.itemName,
     data: item.trades.map((t: any) => ({ x: t.date, y: t.unitPrice })),
     borderColor: COLORS[i % COLORS.length],
@@ -88,7 +139,6 @@ export default function SoldClient() {
   const fetchHistory = useCallback(async (name: string) => {
     setChartLoading(true);
     try {
-      // ★ DynamoDB 기반 히스토리 조회 (7일)
       let url = `/api/auction-sold-history?itemName=${encodeURIComponent(name)}&wordType=match&days=7`;
       const res = await fetch(url);
       const data = await res.json();
@@ -119,6 +169,8 @@ export default function SoldClient() {
 
   const handleChipClick = useCallback(async (name: string) => { setQuery(name); await fetchHistory(name); }, [fetchHistory]);
 
+  // 칩 표시용도 동일하게 balanced 선택 적용
+  const balancedChipItems = selectBalancedItems(insightItems);
   const COLORS = ["#E24B4A","#378ADD","#1D9E75","#EF9F27","#7F77DD","#D85A30"];
 
   return (
@@ -133,10 +185,9 @@ export default function SoldClient() {
           {chartMode === "search" && (<button onClick={() => { setChartMode("overview"); setChartTitle("인기 아이템 시세 흐름"); setChartData([]); }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 20, border: "0.5px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-muted)", cursor: "pointer" }}>전체 보기</button>)}
         </div>
         {chartLoading ? (<div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 12, color: "var(--text-muted)" }}>차트 로딩 중...</div></div>) : (<PriceChart chartData={chartData} mode={chartMode} itemName={query} insightItems={insightItems} />)}
-        {chartMode === "overview" && insightItems.length > 0 && (<div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>{insightItems.slice(0, 6).map((item, i) => (<button key={item.itemName} onClick={() => handleChipClick(item.itemName)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, padding: "3px 8px", borderRadius: 20, border: `0.5px solid ${COLORS[i]}40`, background: `${COLORS[i]}12`, color: COLORS[i], cursor: "pointer" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS[i], display: "inline-block" }} />{item.itemName}</button>))}</div>)}
+        {chartMode === "overview" && balancedChipItems.length > 0 && (<div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>{balancedChipItems.map((item, i) => (<button key={item.itemName} onClick={() => handleChipClick(item.itemName)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, padding: "3px 8px", borderRadius: 20, border: `0.5px solid ${COLORS[i]}40`, background: `${COLORS[i]}12`, color: COLORS[i], cursor: "pointer" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS[i], display: "inline-block" }} />{item.itemName}</button>))}</div>)}
         {chartMode === "search" && chartData.length > 0 && (() => {
           const prices = chartData.map(d => d.avg); const latest = prices[prices.length - 1]; const totalVol = chartData.reduce((s, d) => s + d.count, 0);
-          // ★ 변동률: 첫째 날 vs 마지막 날
           const firstPrice = prices[0];
           const change = firstPrice > 0 ? Math.round(((latest - firstPrice) / firstPrice) * 10000) / 100 : 0;
           const isUp = change >= 0;
