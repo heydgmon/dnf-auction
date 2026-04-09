@@ -53,7 +53,7 @@ export default function Nav() {
                 } : {}),
               }}
             >
-              {t.href === "/guide" ? "🎮 " : ""}{t.label}
+              {t.label}
             </Link>
           ))}
         </nav>
@@ -63,7 +63,7 @@ export default function Nav() {
             <div className="animate-slide-down" style={{ position: "absolute", right: 0, top: "100%", marginTop: 4, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", minWidth: 160, zIndex: 50, padding: "4px 0" }}>
               {NAV_ITEMS.map((t) => (
                 <Link key={t.href} href={t.href} onClick={() => setMenuOpen(false)} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 12, textDecoration: "none", color: pathname === t.href ? "var(--color-primary)" : t.href === "/guide" ? "var(--color-accent)" : "var(--text-secondary)", background: pathname === t.href ? "var(--color-primary-light)" : "transparent" }}>
-                  {t.href === "/guide" ? "🎮 " : ""}{t.label}
+                  {t.label}
                 </Link>
               ))}
             </div>

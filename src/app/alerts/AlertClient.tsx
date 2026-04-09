@@ -83,7 +83,7 @@ export default function AlertClient() {
         <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(37,99,235,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: -20, left: -20, width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #D97706, #F59E0B)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>⚡</div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #D97706, #F59E0B)", flexShrink: 0 }} />
           <div><div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>업데이트 영향 분석</div><div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>천해천 패치 · 시장 영향 리포트</div></div>
           <div style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 99, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", fontSize: 10, fontWeight: 700, color: "#F87171", letterSpacing: "0.02em" }}>HOT</div>
         </div>
@@ -92,7 +92,7 @@ export default function AlertClient() {
           <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0, marginTop: 6 }}>특히 <span style={{ color: "var(--color-primary)", fontWeight: 600 }}>던전 플레이에서 사용되는 아이템</span>의 소비량이 빠르게 증가하고 있습니다.</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>📌 주목 아이템</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>주목 아이템</div>
           <div style={{ flex: 1, height: 1, background: "var(--border-color)" }} />
         </div>
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
@@ -125,10 +125,8 @@ export default function AlertClient() {
           })}
         </div>
         <div style={{ background: "rgba(37,99,235,0.08)", borderRadius: 10, padding: "12px 14px", border: "1px solid rgba(37,99,235,0.15)", display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 6, background: "rgba(37,99,235,0.2)", fontSize: 12, flexShrink: 0, marginTop: 1 }}>💡</span>
           <p style={{ fontSize: 11, color: "#93C5FD", lineHeight: 1.65, margin: 0, fontWeight: 500 }}>지금 가격은 이미 <span style={{ color: "#FDE68A", fontWeight: 700 }}>상승 초입 구간</span>으로, 단기적으로 추가 상승 가능성이 있는 구간입니다.</p>
         </div>
-        <p style={{ fontSize: 10, color: "#475569", textAlign: "center", margin: "12px 0 0" }}>아이템 카드를 클릭하면 알림 등록으로 자동 입력됩니다</p>
       </div>
 
       {popular.length > 0 && (<section><div className="section-title">🔥 인기 검색 아이템</div><PopularCards items={popular} onSelect={n => { setAlertItem(n); window.scrollTo({ top: 0, behavior: "smooth" }); }} /></section>)}

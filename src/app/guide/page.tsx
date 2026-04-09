@@ -53,7 +53,6 @@ const SECTIONS = [
     color: "#DC2626",
     bgColor: "rgba(220,38,38,0.06)",
     borderColor: "rgba(220,38,38,0.2)",
-    icon: "⚔️",
     tips: [
       {
         text: "강화와 증폭은 비용 대비 효율이 가장 떨어지므로 제일 나중에 하세요",
@@ -102,7 +101,7 @@ export default function GuidePage() {
       {/* 헤더 */}
       <section style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎮</div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }} />
           <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>던린이 세팅 가이드</h1>
         </div>
         <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7, padding: "12px 16px", background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 12, borderLeft: "3px solid var(--color-primary)" }}>
@@ -139,7 +138,6 @@ export default function GuidePage() {
               }}>
                 {section.num}
               </div>
-              <span style={{ fontSize: 18 }}>{section.icon}</span>
               <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{section.title}</span>
             </div>
 

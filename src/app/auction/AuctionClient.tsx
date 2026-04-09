@@ -129,7 +129,7 @@ export default function AuctionClient() {
           <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(147,51,234,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
           <div style={{ position: "absolute", bottom: -30, left: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg, #7C3AED, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}></div>
+            <div style={{ width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg, #7C3AED, #A855F7)", flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>패키지 구매 가이드</div>
               <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>경매장 vs 세라샵 가격 비교</div>
@@ -188,7 +188,6 @@ export default function AuctionClient() {
             </div>
           )}
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "10px 12px" }}>
-            <span style={{ fontSize: 11, color: "#475569", flexShrink: 0, marginTop: 1 }}>ℹ️</span>
             <div style={{ fontSize: 10, color: "#64748B", lineHeight: 1.6 }}>현금 환산 기준: <span style={{ color: "#94A3B8" }}>1,000,000 골드 = 1,000원</span> · 시세는 실시간 변동됩니다.<br />패키지 내 아이템 개별 가치에 따라 실제 이득 여부는 달라질 수 있습니다.</div>
           </div>
         </div>

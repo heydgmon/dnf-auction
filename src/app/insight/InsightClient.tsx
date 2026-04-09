@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getRarityColor, formatGold } from "@/lib/utils";
+
 import { Card, ItemImg, SkeletonList, Empty } from "@/components/shared";
 
 interface InsightItem { itemName: string; itemId: string; itemRarity: string; trades: { date: string; unitPrice: number; count: number }[]; avgPrice: number; minPrice: number; maxPrice: number; totalVolume: number; totalValue: number; priceChange: number; }
