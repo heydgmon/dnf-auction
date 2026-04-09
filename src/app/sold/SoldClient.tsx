@@ -8,12 +8,10 @@ import {
   AutocompleteSearch, SearchHelpers, addRecent, filterByItemName,
 } from "@/components/shared";
 
-// 가격대별로 골고루 섞어 6개 추출
-// 비싼 것 2개 / 중간 2개 / 싼 것 2개
+// 가격대별로 골고루 섞어 6개 추출 (비싼 2 / 중간 2 / 싼 2)
 function selectBalancedItems(items: any[]): any[] {
   if (items.length <= 6) return items;
 
-  // avgPrice 기준으로 정렬 (없으면 trades 마지막 unitPrice 사용)
   const withPrice = items
     .map(item => ({
       item,
@@ -25,37 +23,69 @@ function selectBalancedItems(items: any[]): any[] {
   if (withPrice.length <= 6) return withPrice.map(({ item }) => item);
 
   const total = withPrice.length;
-  // 비싼 2개: 상위 구간
   const expensive = withPrice.slice(0, Math.ceil(total * 0.25)).slice(0, 2);
-  // 싼 2개: 하위 구간
   const cheap = withPrice.slice(Math.floor(total * 0.75)).slice(0, 2);
-  // 중간 2개: 중간 구간
   const midStart = Math.floor(total * 0.4);
   const mid = withPrice.slice(midStart, midStart + 2);
 
-  // 중복 제거 후 합치기
-  const selected = [...expensive, ...mid, ...cheap];
   const seen = new Set<string>();
   const unique: any[] = [];
-  for (const { item } of selected) {
+  for (const { item } of [...expensive, ...mid, ...cheap]) {
     if (!seen.has(item.itemName)) {
       seen.add(item.itemName);
       unique.push(item);
     }
   }
-
-  // 6개가 안 되면 나머지에서 보충
-  if (unique.length < 6) {
-    for (const { item } of withPrice) {
-      if (!seen.has(item.itemName)) {
-        seen.add(item.itemName);
-        unique.push(item);
-      }
-      if (unique.length >= 6) break;
+  for (const { item } of withPrice) {
+    if (unique.length >= 6) break;
+    if (!seen.has(item.itemName)) {
+      seen.add(item.itemName);
+      unique.push(item);
     }
   }
-
   return unique.slice(0, 6);
+}
+
+// Y축 tick 포매터
+function formatYTick(v: any): string {
+  const n = Number(v);
+  if (n >= 100_000_000) return (n / 100_000_000).toFixed(1) + "억";
+  if (n >= 10_000) return Math.round(n / 10_000) + "만";
+  return n.toLocaleString();
+}
+
+// 데이터셋 전체 가격에서 min/max 추출 후 여백 포함 Y축 범위 계산
+function calcYRange(datasets: { data: { y: number }[] }[]): { min: number; max: number } {
+  const allPrices: number[] = [];
+  for (const ds of datasets) {
+    for (const pt of ds.data) {
+      if (pt.y > 0) allPrices.push(pt.y);
+    }
+  }
+  if (allPrices.length === 0) return { min: 0, max: 1 };
+
+  const rawMin = Math.min(...allPrices);
+  const rawMax = Math.max(...allPrices);
+  const range = rawMax - rawMin || rawMax;
+  const pad = range * 0.15;
+  return {
+    min: Math.max(0, rawMin - pad),
+    max: rawMax + pad,
+  };
+}
+
+// 단일 가격 배열에서 Y축 범위 계산
+function calcSingleYRange(prices: number[]): { min: number; max?: number } {
+  const valid = prices.filter(p => p > 0);
+  if (valid.length === 0) return { min: 0 };
+  const rawMin = Math.min(...valid);
+  const rawMax = Math.max(...valid);
+  const range = rawMax - rawMin || rawMax;
+  const pad = range * 0.2;
+  return {
+    min: Math.max(0, rawMin - pad),
+    max: rawMax + pad,
+  };
 }
 
 // 인사이트 데이터 → 차트용 멀티 데이터셋
@@ -71,7 +101,12 @@ function buildOverviewDatasets(items: any[]) {
   }));
 }
 
-function PriceChart({ chartData, mode, itemName, insightItems }: { chartData: { date: string; avg: number; count: number }[]; mode: "overview" | "search"; itemName: string; insightItems: any[]; }) {
+function PriceChart({ chartData, mode, itemName, insightItems }: {
+  chartData: { date: string; avg: number; count: number }[];
+  mode: "overview" | "search";
+  itemName: string;
+  insightItems: any[];
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<any>(null);
 
@@ -83,6 +118,7 @@ function PriceChart({ chartData, mode, itemName, insightItems }: { chartData: { 
       const Chart = (window as any).Chart;
       if (!Chart || !canvasRef.current || destroyed) return;
       if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+
       const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
       const tickColor = isDark ? "#666" : "#bbb";
@@ -91,28 +127,135 @@ function PriceChart({ chartData, mode, itemName, insightItems }: { chartData: { 
 
       if (mode === "overview" && insightItems.length > 0) {
         const datasets = buildOverviewDatasets(insightItems);
+        const { min, max } = calcYRange(datasets);
+
         chartRef.current = new Chart(ctx, {
-          type: "line", data: { datasets },
-          options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c: any) => ` ${c.dataset.label}: ${Number(c.parsed.y).toLocaleString()}G` } } }, scales: { x: { type: "category", ticks: { color: tickColor, font: { size: 10 }, maxTicksLimit: 7 }, grid: { color: gridColor } }, y: { position: "right", ticks: { color: tickColor, font: { size: 10 }, maxTicksLimit: 5, callback: (v: any) => { if (v >= 100_000_000) return (v / 100_000_000).toFixed(1) + "억"; if (v >= 10_000) return Math.round(v / 10_000) + "만"; return v.toLocaleString(); } }, grid: { color: gridColor } } } },
+          type: "line",
+          data: { datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (c: any) => ` ${c.dataset.label}: ${Number(c.parsed.y).toLocaleString()}G`,
+                },
+              },
+            },
+            scales: {
+              x: {
+                type: "category",
+                ticks: { color: tickColor, font: { size: 10 }, maxTicksLimit: 7 },
+                grid: { color: gridColor },
+              },
+              y: {
+                position: "right",
+                min,
+                max,
+                ticks: {
+                  color: tickColor,
+                  font: { size: 10 },
+                  maxTicksLimit: 6,
+                  callback: formatYTick,
+                },
+                grid: { color: gridColor },
+              },
+            },
+          },
         });
+
       } else if (mode === "search" && chartData.length > 0) {
         const labels = chartData.map(d => d.date.slice(5));
         const priceData = chartData.map(d => d.avg);
         const volData = chartData.map(d => d.count);
         const isUp = priceData.length >= 2 && priceData[priceData.length - 1] >= priceData[0];
         const lineColor = isUp ? "#E24B4A" : "#378ADD";
+        const { min: yMin, max: yMax } = calcSingleYRange(priceData);
+
         chartRef.current = new Chart(ctx, {
-          data: { labels, datasets: [{ type: "line", label: "평균가", data: priceData, borderColor: lineColor, backgroundColor: lineColor + "12", borderWidth: 2, pointRadius: 3, pointBackgroundColor: lineColor, tension: 0.35, fill: true, yAxisID: "y", order: 1 }, { type: "bar", label: "거래량", data: volData, backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)", borderRadius: 3, yAxisID: "y2", order: 2 }] },
-          options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c: any) => { if (c.dataset.label === "평균가") return ` 평균가: ${Number(c.parsed.y).toLocaleString()}G`; return ` 거래량: ${c.parsed.y}건`; } } } }, scales: { x: { ticks: { color: tickColor, font: { size: 10 } }, grid: { color: gridColor } }, y: { position: "right", ticks: { color: tickColor, font: { size: 10 }, maxTicksLimit: 5, callback: (v: any) => { if (v >= 100_000_000) return (v / 100_000_000).toFixed(1) + "억"; if (v >= 10_000) return Math.round(v / 10_000) + "만"; return v.toLocaleString(); } }, grid: { color: gridColor } }, y2: { display: false } } },
+          data: {
+            labels,
+            datasets: [
+              {
+                type: "line", label: "평균가", data: priceData,
+                borderColor: lineColor, backgroundColor: lineColor + "12",
+                borderWidth: 2, pointRadius: 3, pointBackgroundColor: lineColor,
+                tension: 0.35, fill: true, yAxisID: "y", order: 1,
+              },
+              {
+                type: "bar", label: "거래량", data: volData,
+                backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
+                borderRadius: 3, yAxisID: "y2", order: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (c: any) => {
+                    if (c.dataset.label === "평균가") return ` 평균가: ${Number(c.parsed.y).toLocaleString()}G`;
+                    return ` 거래량: ${c.parsed.y}건`;
+                  },
+                },
+              },
+            },
+            scales: {
+              x: {
+                ticks: { color: tickColor, font: { size: 10 } },
+                grid: { color: gridColor },
+              },
+              y: {
+                position: "right",
+                min: yMin,
+                ...(yMax !== undefined ? { max: yMax } : {}),
+                ticks: {
+                  color: tickColor,
+                  font: { size: 10 },
+                  maxTicksLimit: 6,
+                  callback: formatYTick,
+                },
+                grid: { color: gridColor },
+              },
+              y2: { display: false },
+            },
+          },
         });
       }
     };
 
-    const startPolling = () => { pollInterval = setInterval(() => { if ((window as any).Chart) { if (pollInterval) clearInterval(pollInterval); if (!destroyed) tryBuild(); } }, 100); };
+    const startPolling = () => {
+      pollInterval = setInterval(() => {
+        if ((window as any).Chart) {
+          if (pollInterval) clearInterval(pollInterval);
+          if (!destroyed) tryBuild();
+        }
+      }, 100);
+    };
+
     if ((window as any).Chart) { tryBuild(); }
     else if (document.getElementById("chartjs-cdn")) { startPolling(); }
-    else { const s = document.createElement("script"); s.id = "chartjs-cdn"; s.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"; s.onload = () => { if (!destroyed) tryBuild(); }; s.onerror = () => console.error("[Chart.js] CDN 로드 실패"); document.head.appendChild(s); }
-    return () => { destroyed = true; if (pollInterval) clearInterval(pollInterval); chartRef.current?.destroy(); chartRef.current = null; };
+    else {
+      const s = document.createElement("script");
+      s.id = "chartjs-cdn";
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
+      s.onload = () => { if (!destroyed) tryBuild(); };
+      s.onerror = () => console.error("[Chart.js] CDN 로드 실패");
+      document.head.appendChild(s);
+    }
+
+    return () => {
+      destroyed = true;
+      if (pollInterval) clearInterval(pollInterval);
+      chartRef.current?.destroy();
+      chartRef.current = null;
+    };
   }, [mode, chartData, insightItems]);
 
   return (<div style={{ position: "relative", width: "100%", height: 220 }}><canvas ref={canvasRef} /></div>);
@@ -139,7 +282,7 @@ export default function SoldClient() {
   const fetchHistory = useCallback(async (name: string) => {
     setChartLoading(true);
     try {
-      let url = `/api/auction-sold-history?itemName=${encodeURIComponent(name)}&wordType=match&days=7`;
+      const url = `/api/auction-sold-history?itemName=${encodeURIComponent(name)}&wordType=match&days=7`;
       const res = await fetch(url);
       const data = await res.json();
       const cd: { date: string; avg: number; count: number }[] = data.chartRows || [];
@@ -161,15 +304,29 @@ export default function SoldClient() {
       filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
       setResults(filtered);
       if (filtered.length === 0 && recentRows.length === 0) setError("거래 내역이 없습니다.");
-    } catch { setError("서버 연결에 실패했습니다."); setResults([]); setChartMode("overview"); setChartTitle("인기 아이템 시세 흐름"); }
-    finally { setLoading(false); }
+    } catch {
+      setError("서버 연결에 실패했습니다.");
+      setResults([]);
+      setChartMode("overview");
+      setChartTitle("인기 아이템 시세 흐름");
+    } finally { setLoading(false); }
   }, [query, fetchHistory]);
 
-  useEffect(() => { if (!query.trim() && searched) { setSearched(false); setResults([]); setChartMode("overview"); setChartTitle("인기 아이템 시세 흐름"); setChartData([]); } }, [query]);
+  useEffect(() => {
+    if (!query.trim() && searched) {
+      setSearched(false);
+      setResults([]);
+      setChartMode("overview");
+      setChartTitle("인기 아이템 시세 흐름");
+      setChartData([]);
+    }
+  }, [query]);
 
-  const handleChipClick = useCallback(async (name: string) => { setQuery(name); await fetchHistory(name); }, [fetchHistory]);
+  const handleChipClick = useCallback(async (name: string) => {
+    setQuery(name);
+    await fetchHistory(name);
+  }, [fetchHistory]);
 
-  // 칩 표시용도 동일하게 balanced 선택 적용
   const balancedChipItems = selectBalancedItems(insightItems);
   const COLORS = ["#E24B4A","#378ADD","#1D9E75","#EF9F27","#7F77DD","#D85A30"];
 
@@ -181,23 +338,80 @@ export default function SoldClient() {
       </Card>
       <Card>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div><div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{chartTitle}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>{chartMode === "overview" ? "실체결 기준 · 인기 아이템 시세 흐름" : "실체결 기준 · 일별 평균가 + 거래량"}</div></div>
-          {chartMode === "search" && (<button onClick={() => { setChartMode("overview"); setChartTitle("인기 아이템 시세 흐름"); setChartData([]); }} style={{ fontSize: 10, padding: "4px 10px", borderRadius: 20, border: "0.5px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-muted)", cursor: "pointer" }}>전체 보기</button>)}
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{chartTitle}</div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
+              {chartMode === "overview" ? "실체결 기준 · 인기 아이템 시세 흐름" : "실체결 기준 · 일별 평균가 + 거래량"}
+            </div>
+          </div>
+          {chartMode === "search" && (
+            <button
+              onClick={() => { setChartMode("overview"); setChartTitle("인기 아이템 시세 흐름"); setChartData([]); }}
+              style={{ fontSize: 10, padding: "4px 10px", borderRadius: 20, border: "0.5px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-muted)", cursor: "pointer" }}>
+              전체 보기
+            </button>
+          )}
         </div>
-        {chartLoading ? (<div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 12, color: "var(--text-muted)" }}>차트 로딩 중...</div></div>) : (<PriceChart chartData={chartData} mode={chartMode} itemName={query} insightItems={insightItems} />)}
-        {chartMode === "overview" && balancedChipItems.length > 0 && (<div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>{balancedChipItems.map((item, i) => (<button key={item.itemName} onClick={() => handleChipClick(item.itemName)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, padding: "3px 8px", borderRadius: 20, border: `0.5px solid ${COLORS[i]}40`, background: `${COLORS[i]}12`, color: COLORS[i], cursor: "pointer" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS[i], display: "inline-block" }} />{item.itemName}</button>))}</div>)}
+        {chartLoading
+          ? (<div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 12, color: "var(--text-muted)" }}>차트 로딩 중...</div></div>)
+          : (<PriceChart chartData={chartData} mode={chartMode} itemName={query} insightItems={insightItems} />)
+        }
+        {chartMode === "overview" && balancedChipItems.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+            {balancedChipItems.map((item, i) => (
+              <button key={item.itemName} onClick={() => handleChipClick(item.itemName)}
+                style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, padding: "3px 8px", borderRadius: 20, border: `0.5px solid ${COLORS[i]}40`, background: `${COLORS[i]}12`, color: COLORS[i], cursor: "pointer" }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS[i], display: "inline-block" }} />
+                {item.itemName}
+              </button>
+            ))}
+          </div>
+        )}
         {chartMode === "search" && chartData.length > 0 && (() => {
-          const prices = chartData.map(d => d.avg); const latest = prices[prices.length - 1]; const totalVol = chartData.reduce((s, d) => s + d.count, 0);
+          const prices = chartData.map(d => d.avg);
+          const latest = prices[prices.length - 1];
+          const totalVol = chartData.reduce((s, d) => s + d.count, 0);
           const firstPrice = prices[0];
           const change = firstPrice > 0 ? Math.round(((latest - firstPrice) / firstPrice) * 10000) / 100 : 0;
           const isUp = change >= 0;
-          return (<div style={{ display: "flex", gap: 8, marginTop: 12 }}>{[{ label: "최근 평균가", value: `${latest.toLocaleString()}G` }, { label: "기간 변동", value: `${isUp ? "+" : ""}${change}%`, color: isUp ? "#E24B4A" : "#378ADD" }, { label: "거래 건수", value: `${totalVol}건` }].map(({ label, value, color }) => (<div key={label} style={{ flex: 1, background: "var(--bg-primary)", borderRadius: 8, padding: "8px 10px" }}><div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div><div style={{ fontSize: 13, fontWeight: 600, color: color || "var(--text-primary)" }}>{value}</div></div>))}</div>);
+          return (
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              {[
+                { label: "최근 평균가", value: `${latest.toLocaleString()}G` },
+                { label: "기간 변동", value: `${isUp ? "+" : ""}${change}%`, color: isUp ? "#E24B4A" : "#378ADD" },
+                { label: "거래 건수", value: `${totalVol}건` },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ flex: 1, background: "var(--bg-primary)", borderRadius: 8, padding: "8px 10px" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: color || "var(--text-primary)" }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          );
         })()}
       </Card>
       {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
       <ErrorMsg msg={error} />
       {loading && <SkeletonList count={5} />}
-      {!loading && results.length > 0 && (<div><p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>최근 거래 {results.length}건</p><div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{results.map((item, i) => (<div key={i} className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12 }}><ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} /><div style={{ flex: 1, minWidth: 0, fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.reinforce > 0 && <span style={{ color: "var(--color-accent-dim)" }}>+{item.reinforce} </span>}{item.itemName}</div><span style={{ fontSize: 10, color: "var(--text-muted)" }}>{item.count > 1 ? `x${item.count}` : ""}</span><span style={{ fontWeight: 600, color: "var(--color-accent-dim)", width: 64, textAlign: "right" }}>{formatGold(item.unitPrice)}</span><span className="hidden sm:block" style={{ fontSize: 10, color: "var(--text-muted)", width: 100, textAlign: "right" }}>{formatDate(item.soldDate)}</span></div>))}</div></div>)}
+      {!loading && results.length > 0 && (
+        <div>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>최근 거래 {results.length}건</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {results.map((item, i) => (
+              <div key={i} className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12 }}>
+                <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={28} />
+                <div style={{ flex: 1, minWidth: 0, fontWeight: 500, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {item.reinforce > 0 && <span style={{ color: "var(--color-accent-dim)" }}>+{item.reinforce} </span>}
+                  {item.itemName}
+                </div>
+                <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{item.count > 1 ? `x${item.count}` : ""}</span>
+                <span style={{ fontWeight: 600, color: "var(--color-accent-dim)", width: 64, textAlign: "right" }}>{formatGold(item.unitPrice)}</span>
+                <span className="hidden sm:block" style={{ fontSize: 10, color: "var(--text-muted)", width: 100, textAlign: "right" }}>{formatDate(item.soldDate)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {!loading && searched && !results.length && !error && <Empty msg="거래 내역이 없습니다." />}
     </div>
   );
