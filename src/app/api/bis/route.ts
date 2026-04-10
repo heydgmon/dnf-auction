@@ -1,33 +1,34 @@
 /**
- * [BIS API]
- * 던전앤파이터 종결템(칭호, 크리쳐, 오라, 마법부여) 시세 데이터를 제공하는 API
- * ■ 주요 기능
- * - 카테고리별 Top 아이템 3개 선정
- * - 실거래(경매 완료) 데이터를 기반으로 평균 체결가 계산
- * - 경매장 현재 최저가와 비교
- * - 이상치(outlier) 제거 후 평균 산출
+ * [BIS API] — stale-while-revalidate 적용
  *
- * ■ 특징
- * - 이상치 제거 로직 적용 (median 기반)
- * - 시세 데이터 없을 경우 자동 fallback
- * - 5분 TTL 캐싱
- * - shared cache와 병행 사용
+ * ■ 속도 최적화:
+ * 1. FRESH (5분): 캐시 즉시 반환
+ * 2. STALE (5~30분): 캐시 즉시 반환 + 백그라운드 갱신
+ * 3. EXPIRED (30분+): 빌드 대기 (서버 시작 시 워밍업으로 최소화)
  */
 import { NextResponse } from "next/server";
 import { neopleGet } from "@/lib/neople";
-import { isSharedCacheValid, getSharedCache, getSharedBuildPromise } from "@/lib/auction-shared-cache";
+import { isSharedCacheValid, getSharedCache, getSharedBuildPromise, isSharedCacheUsable } from "@/lib/auction-shared-cache";
 
 export const dynamic = "force-dynamic";
 
+/* ── 캐시 ── */
 let bisCache: { data: any; updatedAt: number } | null = null;
-const CACHE_TTL = 5 * 60 * 1000;
+let buildPromise: Promise<any> | null = null;
+const FRESH_TTL = 5 * 60 * 1000;   // 5분
+const STALE_TTL = 30 * 60 * 1000;  // 30분
 
-// ── 하드코딩 아이템 목록 ──
-// searchKeyword : API 검색에 쓸 키워드 (wordType: "full" — 포함 검색)
-// displayName   : 실제 표시할 이름 (결과 필터링 기준, itemName.includes(displayName))
+function isCacheFresh(): boolean {
+  return !!bisCache && Date.now() - bisCache.updatedAt < FRESH_TTL;
+}
+function isCacheUsable(): boolean {
+  return !!bisCache && Date.now() - bisCache.updatedAt < STALE_TTL;
+}
+
+/* ── 하드코딩 아이템 목록 ── */
 interface HardcodedItem {
-  searchKeyword: string; // API 호출 시 itemName 파라미터
-  displayName: string;   // 결과 필터링 및 카드 표시용
+  searchKeyword: string;
+  displayName: string;
 }
 
 const HARDCODED_ITEMS: Record<string, HardcodedItem[]> = {
@@ -104,12 +105,10 @@ async function fetchCurrentLowestByKeyword(searchKeyword: string, displayName: s
   } catch { return null; }
 }
 
-// 하드코딩 아이템 목록을 크리쳐와 동일한 방식으로 처리
 async function resolveHardcodedItems(items: HardcodedItem[]): Promise<any[]> {
   const soldResults = await Promise.all(
     items.map(async ({ searchKeyword, displayName }) => ({
-      searchKeyword,
-      displayName,
+      searchKeyword, displayName,
       rows: await fetchSoldByKeyword(searchKeyword, displayName),
     }))
   );
@@ -119,66 +118,28 @@ async function resolveHardcodedItems(items: HardcodedItem[]): Promise<any[]> {
       const lowestPrice = await fetchCurrentLowestByKeyword(searchKeyword, displayName);
 
       if (rows.length > 0) {
-        // 시세 데이터 있음 → 실체결 기준
         const prices = rows.map((r: any) => r.unitPrice).filter(Boolean);
         if (prices.length === 0) {
-          return {
-            itemName: displayName,
-            itemId: rows[0]?.itemId || "",
-            itemRarity: rows[0]?.itemRarity || "",
-            avgPrice: lowestPrice ?? 0,
-            tradeCount: 0,
-            totalValue: lowestPrice ?? 0,
-            lowestPrice,
-            source: "경매장",
-          };
+          return { itemName: displayName, itemId: rows[0]?.itemId || "", itemRarity: rows[0]?.itemRarity || "", avgPrice: lowestPrice ?? 0, tradeCount: 0, totalValue: lowestPrice ?? 0, lowestPrice, source: "경매장" };
         }
         const cleaned = removeOutliers(prices);
-        const avgPrice = cleaned.length > 0
-          ? Math.round(cleaned.reduce((a, b) => a + b, 0) / cleaned.length)
-          : 0;
+        const avgPrice = cleaned.length > 0 ? Math.round(cleaned.reduce((a, b) => a + b, 0) / cleaned.length) : 0;
         const totalValue = cleaned.reduce((a, b) => a + b, 0);
-        return {
-          itemName: displayName,
-          itemId: rows[0].itemId || "",
-          itemRarity: rows[0].itemRarity || "",
-          avgPrice,
-          tradeCount: rows.reduce((s: number, r: any) => s + (r.count || 1), 0),
-          totalValue,
-          lowestPrice,
-          source: "시세",
-        };
+        return { itemName: displayName, itemId: rows[0].itemId || "", itemRarity: rows[0].itemRarity || "", avgPrice, tradeCount: rows.reduce((s: number, r: any) => s + (r.count || 1), 0), totalValue, lowestPrice, source: "시세" };
       } else {
-        // 시세 데이터 없음 → 경매장 최저가만
-        // itemId/itemRarity는 경매장 API에서 fallback으로 조회
-        let itemId = "";
-        let itemRarity = "";
+        let itemId = "", itemRarity = "";
         try {
           const { data: aData, ok: aOk } = await neopleGet("/df/auction", { itemName: searchKeyword, wordType: "match", limit: "5" });
           if (aOk && aData.rows) {
             const match = aData.rows.find((r: any) => (r.itemName as string).includes(displayName));
-            if (match) {
-              itemId = match.itemId || "";
-              itemRarity = match.itemRarity || "";
-            }
+            if (match) { itemId = match.itemId || ""; itemRarity = match.itemRarity || ""; }
           }
-        } catch { /* itemId/itemRarity 없어도 무방 */ }
-
-        return {
-          itemName: displayName,
-          itemId,
-          itemRarity,
-          avgPrice: lowestPrice ?? 0,
-          tradeCount: 0,
-          totalValue: lowestPrice ?? 0,
-          lowestPrice,
-          source: "경매장",
-        };
+        } catch {}
+        return { itemName: displayName, itemId, itemRarity, avgPrice: lowestPrice ?? 0, tradeCount: 0, totalValue: lowestPrice ?? 0, lowestPrice, source: "경매장" };
       }
     })
   );
 
-  // totalValue 기준 정렬 (0인 항목은 뒤로)
   return ranked.sort((a, b) => {
     if (a.totalValue === 0 && b.totalValue === 0) return 0;
     if (a.totalValue === 0) return 1;
@@ -187,135 +148,148 @@ async function resolveHardcodedItems(items: HardcodedItem[]): Promise<any[]> {
   });
 }
 
+async function buildBisData(): Promise<any> {
+  const start = Date.now();
+
+  if (!isSharedCacheValid() && !isSharedCacheUsable()) await getSharedBuildPromise();
+  const shared = getSharedCache();
+  if (!shared || shared.allAuctionRows.length === 0) {
+    return { categories: [], error: "No auction data" };
+  }
+
+  const typeToItems = new Map<string, Map<string, { itemName: string; itemId: string; itemRarity: string; unitPrice: number }>>();
+  for (const row of shared.allAuctionRows) {
+    const type = row.itemType || "";
+    const name = row.itemName || "";
+    if (!type || !name) continue;
+    if (!typeToItems.has(type)) typeToItems.set(type, new Map());
+    const items = typeToItems.get(type)!;
+    const existing = items.get(name);
+    if (!existing || (row.unitPrice && row.unitPrice < existing.unitPrice)) {
+      items.set(name, { itemName: name, itemId: row.itemId || "", itemRarity: row.itemRarity || "", unitPrice: row.unitPrice || 0 });
+    }
+  }
+
+  const results = [];
+
+  for (const cat of CATEGORIES) {
+    const hardcoded = HARDCODED_ITEMS[cat.category];
+
+    if (hardcoded) {
+      const items = await resolveHardcodedItems(hardcoded);
+      results.push({ category: cat.category, emoji: cat.emoji, items });
+      continue;
+    }
+
+    let categoryItems: { itemName: string; itemId: string; itemRarity: string; unitPrice: number }[] = [];
+    for (const [type, items] of typeToItems) {
+      if (cat.typeMatch(type)) categoryItems = categoryItems.concat([...items.values()]);
+    }
+
+    if (categoryItems.length === 0) {
+      results.push({ category: cat.category, emoji: cat.emoji, items: [] });
+      continue;
+    }
+
+    const categoryNames = categoryItems.map(i => i.itemName);
+    const soldResults = await Promise.all(
+      categoryNames.map(async (name) => ({ name, rows: await fetchSold(name) }))
+    );
+
+    const withSoldData = soldResults.filter(({ rows }) => rows.length > 0);
+    let ranked: any[];
+
+    if (withSoldData.length >= 3) {
+      ranked = withSoldData
+        .map(({ name, rows }) => {
+          const prices = rows.map((r: any) => r.unitPrice).filter(Boolean);
+          if (prices.length === 0) return null;
+          const cleaned = removeOutliers(prices);
+          const avgPrice = cleaned.length > 0 ? Math.round(cleaned.reduce((a, b) => a + b, 0) / cleaned.length) : 0;
+          const totalValue = cleaned.reduce((a, b) => a + b, 0);
+          return { itemName: name, itemId: rows[0].itemId || "", itemRarity: rows[0].itemRarity || "", avgPrice, tradeCount: rows.reduce((s: number, r: any) => s + (r.count || 1), 0), totalValue, source: "시세" };
+        })
+        .filter(Boolean)
+        .sort((a: any, b: any) => b.totalValue - a.totalValue)
+        .slice(0, 3);
+    } else {
+      ranked = categoryItems
+        .filter(i => i.unitPrice > 0)
+        .sort((a, b) => b.unitPrice - a.unitPrice)
+        .slice(0, 3)
+        .map(i => ({ itemName: i.itemName, itemId: i.itemId, itemRarity: i.itemRarity, avgPrice: i.unitPrice, tradeCount: 0, totalValue: i.unitPrice, source: "경매장" }));
+    }
+
+    const withLowest = await Promise.all(
+      ranked.map(async (item: any) => {
+        const lowestPrice = await fetchCurrentLowest(item.itemName);
+        return { ...item, lowestPrice };
+      })
+    );
+
+    results.push({ category: cat.category, emoji: cat.emoji, items: withLowest });
+  }
+
+  const elapsed = Date.now() - start;
+  console.log(`[BIS] Build done in ${elapsed}ms`);
+  return { categories: results, updatedAt: new Date().toISOString() };
+}
+
+function triggerBackgroundRefresh(): void {
+  if (buildPromise) return;
+  buildPromise = buildBisData()
+    .then(data => {
+      bisCache = { data, updatedAt: Date.now() };
+      console.log("[BIS] Background refresh done");
+      return data;
+    })
+    .catch(err => {
+      console.error("[BIS] Background refresh failed:", err);
+      return null;
+    })
+    .finally(() => { buildPromise = null; });
+}
+
 export async function GET() {
   try {
-    if (bisCache && Date.now() - bisCache.updatedAt < CACHE_TTL) {
-      return NextResponse.json(bisCache.data);
+    // 1. FRESH → 즉시 반환
+    if (isCacheFresh()) {
+      return NextResponse.json(bisCache!.data);
     }
 
-    if (!isSharedCacheValid()) await getSharedBuildPromise();
-    const shared = getSharedCache();
-    if (!shared || shared.allAuctionRows.length === 0) {
-      return NextResponse.json({ categories: [], error: "No auction data" });
+    // 2. STALE → 즉시 반환 + 백그라운드 갱신
+    if (isCacheUsable()) {
+      triggerBackgroundRefresh();
+      return NextResponse.json(bisCache!.data);
     }
 
-    // ── itemType으로 분류 ──
-    const typeToItems = new Map<string, Map<string, { itemName: string; itemId: string; itemRarity: string; unitPrice: number }>>();
-    for (const row of shared.allAuctionRows) {
-      const type = row.itemType || "";
-      const name = row.itemName || "";
-      if (!type || !name) continue;
-      if (!typeToItems.has(type)) typeToItems.set(type, new Map());
-      const items = typeToItems.get(type)!;
-      const existing = items.get(name);
-      // 최저가 유지
-      if (!existing || (row.unitPrice && row.unitPrice < existing.unitPrice)) {
-        items.set(name, {
-          itemName: name,
-          itemId: row.itemId || "",
-          itemRarity: row.itemRarity || "",
-          unitPrice: row.unitPrice || 0,
-        });
-      }
-    }
-
-    const results = [];
-
-    for (const cat of CATEGORIES) {
-      const hardcoded = HARDCODED_ITEMS[cat.category];
-
-      // ── 하드코딩 카테고리: shared cache 우회, 직접 API 조회 ──
-      if (hardcoded) {
-        console.log(`[BIS] ${cat.category}: using hardcoded items (${hardcoded.length})`);
-        const items = await resolveHardcodedItems(hardcoded);
-        results.push({ category: cat.category, emoji: cat.emoji, items });
-        continue;
-      }
-
-      // ── 기존 로직: shared cache 기반 ──
-      let categoryItems: { itemName: string; itemId: string; itemRarity: string; unitPrice: number }[] = [];
-      for (const [type, items] of typeToItems) {
-        if (cat.typeMatch(type)) {
-          categoryItems = categoryItems.concat([...items.values()]);
-        }
-      }
-
-      console.log(`[BIS] ${cat.category}: ${categoryItems.length} items from auction`);
-
-      if (categoryItems.length === 0) {
-        results.push({ category: cat.category, emoji: cat.emoji, items: [] });
-        continue;
-      }
-
-      // ── 시세(실체결) 조회 시도 ──
-      const categoryNames = categoryItems.map(i => i.itemName);
-      const soldResults = await Promise.all(
-        categoryNames.map(async (name) => ({ name, rows: await fetchSold(name) }))
-      );
-
-      const withSoldData = soldResults.filter(({ rows }) => rows.length > 0);
-
-      let ranked: any[];
-
-      if (withSoldData.length >= 3) {
-        // ── 시세 데이터 충분 → 실체결 기준 Top 3 ──
-        ranked = withSoldData
-          .map(({ name, rows }) => {
-            const prices = rows.map((r: any) => r.unitPrice).filter(Boolean);
-            if (prices.length === 0) return null;
-            const cleaned = removeOutliers(prices);
-            const avgPrice = cleaned.length > 0
-              ? Math.round(cleaned.reduce((a, b) => a + b, 0) / cleaned.length)
-              : 0;
-            const totalValue = cleaned.reduce((a, b) => a + b, 0);
-            return {
-              itemName: name,
-              itemId: rows[0].itemId || "",
-              itemRarity: rows[0].itemRarity || "",
-              avgPrice,
-              tradeCount: rows.reduce((s: number, r: any) => s + (r.count || 1), 0),
-              totalValue,
-              source: "시세",
-            };
-          })
-          .filter(Boolean)
-          .sort((a: any, b: any) => b.totalValue - a.totalValue)
-          .slice(0, 3);
-      } else {
-        // ── 시세 데이터 부족 → 경매장 등록 매물 최저가 기준 Top 3 ──
-        console.log(`[BIS] ${cat.category}: sold data insufficient (${withSoldData.length}), using auction listings`);
-        ranked = categoryItems
-          .filter(i => i.unitPrice > 0)
-          .sort((a, b) => b.unitPrice - a.unitPrice)
-          .slice(0, 3)
-          .map(i => ({
-            itemName: i.itemName,
-            itemId: i.itemId,
-            itemRarity: i.itemRarity,
-            avgPrice: i.unitPrice,
-            tradeCount: 0,
-            totalValue: i.unitPrice,
-            source: "경매장",
-          }));
-      }
-
-      // ── 경매장 현재 최저가 ──
-      const withLowest = await Promise.all(
-        ranked.map(async (item: any) => {
-          const lowestPrice = await fetchCurrentLowest(item.itemName);
-          return { ...item, lowestPrice };
+    // 3. EXPIRED → 빌드 대기
+    if (!buildPromise) {
+      buildPromise = buildBisData()
+        .then(data => {
+          bisCache = { data, updatedAt: Date.now() };
+          return data;
         })
-      );
-
-      results.push({ category: cat.category, emoji: cat.emoji, items: withLowest });
+        .finally(() => { buildPromise = null; });
     }
-
-    const result = { categories: results, updatedAt: new Date().toISOString() };
-    bisCache = { data: result, updatedAt: Date.now() };
-    return NextResponse.json(result);
+    const result = await buildPromise;
+    return NextResponse.json(result || { categories: [] });
   } catch (err: any) {
     console.error("[BIS] error:", err.message);
     if (bisCache) return NextResponse.json(bisCache.data);
     return NextResponse.json({ categories: [], error: err.message });
   }
 }
+
+// ── 서버 시작 시 워밍업 ──
+(async () => {
+  try {
+    // shared cache 준비 대기
+    await getSharedBuildPromise();
+    const data = await buildBisData();
+    bisCache = { data, updatedAt: Date.now() };
+    console.log("[BIS] Warmup done");
+  } catch (e) {
+    console.error("[BIS] Warmup failed:", e);
+  }
+})();

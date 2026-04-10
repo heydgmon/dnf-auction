@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { getRarityColor, formatGold } from "@/lib/utils";
-
 import { Card, ItemImg, SkeletonList, Empty } from "@/components/shared";
 
 interface InsightItem { itemName: string; itemId: string; itemRarity: string; trades: { date: string; unitPrice: number; count: number }[]; avgPrice: number; minPrice: number; maxPrice: number; totalVolume: number; totalValue: number; priceChange: number; }
+
+// ── 클라이언트 캐시: 탭 전환 시 즉시 표시 ──
+let clientCache: { data: InsightItem[]; fetchedAt: number } | null = null;
+const CLIENT_CACHE_TTL = 3 * 60 * 1000;
 
 function MiniChart({ trades, color, height = 48 }: { trades: { date: string; unitPrice: number }[]; color: string; height?: number }) {
   if (trades.length < 2) return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "var(--text-muted)" }}>거래 1건</div>;
@@ -16,8 +19,29 @@ function MiniChart({ trades, color, height = 48 }: { trades: { date: string; uni
 }
 
 export default function InsightClient() {
-  const [data, setData] = useState<InsightItem[]>([]); const [loading, setLoading] = useState(true); const [selectedItem, setSelectedItem] = useState<InsightItem | null>(null); const [tab, setTab] = useState<"volume" | "change">("volume");
-  useEffect(() => { fetch("/api/market-insight").then(r => r.json()).then(d => setData(d.items || [])).catch(() => {}).finally(() => setLoading(false)); }, []);
+  const [data, setData] = useState<InsightItem[]>(clientCache?.data || []);
+  const [loading, setLoading] = useState(!clientCache);
+  const [selectedItem, setSelectedItem] = useState<InsightItem | null>(null);
+  const [tab, setTab] = useState<"volume" | "change">("volume");
+
+  useEffect(() => {
+    if (clientCache && Date.now() - clientCache.fetchedAt < CLIENT_CACHE_TTL) {
+      setData(clientCache.data);
+      setLoading(false);
+      return;
+    }
+
+    fetch("/api/market-insight")
+      .then(r => r.json())
+      .then(d => {
+        const items = d.items || [];
+        setData(items);
+        clientCache = { data: items, fetchedAt: Date.now() };
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
   const sortedByVolume = [...data].sort((a, b) => b.totalValue - a.totalValue); const sortedByChange = [...data].sort((a, b) => Math.abs(b.priceChange) - Math.abs(a.priceChange)); const maxValue = sortedByVolume[0]?.totalValue || 1;
 
   return (

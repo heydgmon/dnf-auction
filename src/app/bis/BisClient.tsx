@@ -7,14 +7,28 @@ import { Card, ItemImg, SkeletonList, Empty } from "@/components/shared";
 interface BisItem { itemName: string; itemId: string; itemRarity: string; avgPrice: number; lowestPrice: number | null; tradeCount: number; totalValue: number; source: string; }
 interface BisCategory { category: string; emoji: string; items: BisItem[]; }
 
+// ── 클라이언트 캐시: 탭 전환 시 즉시 표시 ──
+let clientCache: { categories: BisCategory[]; fetchedAt: number } | null = null;
+const CLIENT_CACHE_TTL = 3 * 60 * 1000;
+
 export default function BisClient() {
-  const [categories, setCategories] = useState<BisCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<BisCategory[]>(clientCache?.categories || []);
+  const [loading, setLoading] = useState(!clientCache);
 
   useEffect(() => {
+    if (clientCache && Date.now() - clientCache.fetchedAt < CLIENT_CACHE_TTL) {
+      setCategories(clientCache.categories);
+      setLoading(false);
+      return;
+    }
+
     fetch("/api/bis")
       .then(r => r.json())
-      .then(d => setCategories(d.categories || []))
+      .then(d => {
+        const cats = d.categories || [];
+        setCategories(cats);
+        clientCache = { categories: cats, fetchedAt: Date.now() };
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
