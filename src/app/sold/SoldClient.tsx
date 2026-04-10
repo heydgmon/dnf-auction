@@ -276,7 +276,7 @@ function OverviewDashboard({
   items: any[];
   onItemClick: (name: string) => void;
 }) {
-  const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const [viewMode, setViewMode] = useState<"card" | "list">("list");
   const [sortBy, setSortBy] = useState<"volume" | "change">("volume");
 
   const sorted = [...items].sort((a, b) => {
@@ -550,16 +550,25 @@ export default function SoldClient() {
       {/* ═══ 검색 시: 단일 아이템 차트 ═══ */}
       {chartMode === "search" && (
         <Card>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{chartTitle}</div>
-              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>실체결 기준 · 일별 평균가 + 거래량</div>
-            </div>
-            <button
-              onClick={() => { setChartMode("overview"); setChartTitle(""); setChartData([]); setSearched(false); setResults([]); setQuery(""); }}
-              style={{ fontSize: 10, padding: "4px 10px", borderRadius: 20, border: "0.5px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-muted)", cursor: "pointer" }}>
-              ← 전체 보기
-            </button>
+          {/* 돌아가기 버튼 */}
+          <button
+            onClick={() => { setChartMode("overview"); setChartTitle(""); setChartData([]); setSearched(false); setResults([]); setQuery(""); }}
+            style={{
+              width: "100%", padding: "10px 0", marginBottom: 14,
+              borderRadius: 8, border: "1.5px solid var(--color-primary)",
+              background: "var(--color-primary-light)", color: "var(--color-primary)",
+              fontSize: 13, fontWeight: 600, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              transition: "all 0.15s",
+            }}
+            onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "var(--color-primary)"; (e.currentTarget as HTMLElement).style.color = "#fff"; }}
+            onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "var(--color-primary-light)"; (e.currentTarget as HTMLElement).style.color = "var(--color-primary)"; }}
+          >
+            ← 인기 아이템 시세 현황으로 돌아가기
+          </button>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{chartTitle}</div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>실체결 기준 · 일별 평균가 + 거래량</div>
           </div>
           {chartLoading
             ? <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 12, color: "var(--text-muted)" }}>차트 로딩 중...</div></div>
