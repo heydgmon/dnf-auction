@@ -8,7 +8,9 @@ import {
   AutocompleteSearch, SearchHelpers, addRecent, filterByItemName,
 } from "@/components/shared";
 
-// Y축 tick 포매터
+/* ════════════════════════════════════════
+   Y축 포매터
+   ════════════════════════════════════════ */
 function formatYTick(v: any): string {
   const n = Number(v);
   if (n >= 100_000_000) return (n / 100_000_000).toFixed(1) + "억";
@@ -16,7 +18,6 @@ function formatYTick(v: any): string {
   return n.toLocaleString();
 }
 
-// 단일 가격 배열에서 Y축 범위 계산
 function calcSingleYRange(prices: number[]): { min: number; max?: number } {
   const valid = prices.filter(p => p > 0);
   if (valid.length === 0) return { min: 0 };
@@ -24,13 +25,175 @@ function calcSingleYRange(prices: number[]): { min: number; max?: number } {
   const rawMax = Math.max(...valid);
   const range = rawMax - rawMin || rawMax;
   const pad = range * 0.2;
-  return {
-    min: Math.max(0, rawMin - pad),
-    max: rawMax + pad,
-  };
+  return { min: Math.max(0, rawMin - pad), max: rawMax + pad };
 }
 
-// 인사이트 데이터 → 차트용 멀티 데이터셋 (% 변동률 기반)
+/* ════════════════════════════════════════
+   SVG 미니 스파크라인 (경량, Chart.js 불필요)
+   ════════════════════════════════════════ */
+function Sparkline({
+  data,
+  width = 120,
+  height = 32,
+  color,
+}: {
+  data: number[];
+  width?: number;
+  height?: number;
+  color: string;
+}) {
+  if (data.length < 2) {
+    return (
+      <div style={{ width, height, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "var(--text-muted)" }}>
+        데이터 부족
+      </div>
+    );
+  }
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const pad = 2;
+  const points = data
+    .map((v, i) => {
+      const x = pad + (i / (data.length - 1)) * (width - pad * 2);
+      const y = pad + (1 - (v - min) / range) * (height - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  const gid = `spark-${color.replace(/[^a-z0-9]/gi, "")}`;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} style={{ display: "block" }}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.18" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon
+        points={`${pad},${height - pad} ${points} ${width - pad},${height - pad}`}
+        fill={`url(#${gid})`}
+      />
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {(() => {
+        const lastX = pad + ((data.length - 1) / (data.length - 1)) * (width - pad * 2);
+        const lastY = pad + (1 - (data[data.length - 1] - min) / range) * (height - pad * 2);
+        return <circle cx={lastX} cy={lastY} r="2.5" fill={color} />;
+      })()}
+    </svg>
+  );
+}
+
+/* ════════════════════════════════════════
+   개별 아이템 상세 차트 (Chart.js, 1개만)
+   ════════════════════════════════════════ */
+function DetailChart({
+  trades,
+  color,
+}: {
+  trades: { date: string; unitPrice: number; count: number }[];
+  color: string;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const chartRef = useRef<any>(null);
+
+  useEffect(() => {
+    let destroyed = false;
+
+    const build = () => {
+      const Chart = (window as any).Chart;
+      if (!Chart || !canvasRef.current || destroyed) return;
+      if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
+      const tickColor = isDark ? "#666" : "#bbb";
+      const ctx = canvasRef.current.getContext("2d");
+      if (!ctx) return;
+
+      const labels = trades.map(d => d.date.slice(5));
+      const priceData = trades.map(d => d.unitPrice);
+      const volData = trades.map(d => d.count);
+      const { min: yMin, max: yMax } = calcSingleYRange(priceData);
+
+      chartRef.current = new Chart(ctx, {
+        data: {
+          labels,
+          datasets: [
+            {
+              type: "line", label: "평균가", data: priceData,
+              borderColor: color, backgroundColor: color + "15",
+              borderWidth: 2, pointRadius: 4, pointBackgroundColor: color,
+              pointBorderColor: "#fff", pointBorderWidth: 1.5,
+              tension: 0.35, fill: true, yAxisID: "y", order: 1,
+            },
+            {
+              type: "bar", label: "거래량", data: volData,
+              backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+              borderRadius: 4, yAxisID: "y2", order: 2, barPercentage: 0.4,
+            },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: isDark ? "#1E293B" : "#fff",
+              titleColor: isDark ? "#E2E8F0" : "#0F172A",
+              bodyColor: isDark ? "#94A3B8" : "#475569",
+              borderColor: isDark ? "#334155" : "#E2E8F0",
+              borderWidth: 1, padding: 10, cornerRadius: 8,
+              callbacks: {
+                label: (c: any) => {
+                  if (c.dataset.label === "평균가") return ` 평균가: ${Number(c.parsed.y).toLocaleString()}G`;
+                  return ` 거래량: ${c.parsed.y}건`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: { ticks: { color: tickColor, font: { size: 11 } }, grid: { color: gridColor } },
+            y: {
+              position: "right", min: yMin, ...(yMax !== undefined ? { max: yMax } : {}),
+              ticks: { color: tickColor, font: { size: 10 }, maxTicksLimit: 5, callback: formatYTick },
+              grid: { color: gridColor },
+            },
+            y2: { display: false },
+          },
+        },
+      });
+    };
+
+    const poll = setInterval(() => { if ((window as any).Chart) { clearInterval(poll); if (!destroyed) build(); } }, 80);
+    if ((window as any).Chart) { clearInterval(poll); build(); }
+    else if (!document.getElementById("chartjs-cdn")) {
+      const s = document.createElement("script");
+      s.id = "chartjs-cdn";
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
+      s.onload = () => { if (!destroyed) build(); };
+      document.head.appendChild(s);
+    }
+
+    return () => { destroyed = true; clearInterval(poll); chartRef.current?.destroy(); chartRef.current = null; };
+  }, [trades, color]);
+
+  return <div style={{ position: "relative", width: "100%", height: 200 }}><canvas ref={canvasRef} /></div>;
+}
+
+/* ════════════════════════════════════════
+   개요 대시보드: 테이블 + 스파크라인
+   ════════════════════════════════════════ */
 const COLORS = [
   "#E24B4A","#378ADD","#1D9E75","#EF9F27","#7F77DD",
   "#D85A30","#D4537E","#639922","#2196F3","#FF5722",
@@ -38,238 +201,316 @@ const COLORS = [
   "#00BCD4","#CDDC39","#FF9800","#8BC34A","#673AB7",
 ];
 
-function buildOverviewDatasets(items: any[]) {
-  // 모든 아이템 사용 (최대 20개)
-  const allItems = items.slice(0, 20);
-
-  return allItems.map((item, i) => {
-    const trades = item.trades || [];
-    if (trades.length === 0) return null;
-
-    // 첫 번째 가격을 기준으로 % 변동률 계산
-    const basePrice = trades[0].unitPrice;
-    if (!basePrice || basePrice <= 0) return null;
-
-    const normalizedData = trades.map((t: any) => ({
-      x: t.date,
-      y: ((t.unitPrice - basePrice) / basePrice) * 100, // % 변동
-    }));
-
-    return {
-      label: item.itemName,
-      data: normalizedData,
-      borderColor: COLORS[i % COLORS.length],
-      backgroundColor: COLORS[i % COLORS.length] + "18",
-      borderWidth: 1.5,
-      pointRadius: 2,
-      tension: 0.35,
-      fill: false,
-      yAxisID: "y",
-    };
-  }).filter(Boolean);
-}
-
-// % 변동률 데이터셋의 Y축 범위 계산
-function calcPercentYRange(datasets: any[]): { min: number; max: number } {
-  const allValues: number[] = [];
-  for (const ds of datasets) {
-    for (const pt of ds.data) {
-      if (typeof pt.y === "number" && isFinite(pt.y)) allValues.push(pt.y);
-    }
-  }
-  if (allValues.length === 0) return { min: -5, max: 5 };
-
-  const rawMin = Math.min(...allValues);
-  const rawMax = Math.max(...allValues);
-  const range = rawMax - rawMin || 5;
-  const pad = range * 0.15;
-  return {
-    min: rawMin - pad,
-    max: rawMax + pad,
-  };
-}
-
-function PriceChart({ chartData, mode, itemName, insightItems }: {
-  chartData: { date: string; avg: number; count: number }[];
-  mode: "overview" | "search";
-  itemName: string;
-  insightItems: any[];
+function OverviewDashboard({
+  items,
+  onItemClick,
+}: {
+  items: any[];
+  onItemClick: (name: string) => void;
 }) {
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"volume" | "change">("volume");
+
+  const sorted = [...items].sort((a, b) => {
+    if (sortBy === "change") return Math.abs(b.priceChange) - Math.abs(a.priceChange);
+    return b.totalValue - a.totalValue;
+  });
+
+  const toggle = (name: string) => {
+    setExpandedItem(prev => prev === name ? null : name);
+  };
+
+  return (
+    <div>
+      {/* 정렬 탭 */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
+        {([
+          { key: "volume", label: "거래 규모순" },
+          { key: "change", label: "변동률순" },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setSortBy(tab.key)}
+            style={{
+              padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+              border: "none", cursor: "pointer",
+              background: sortBy === tab.key ? "var(--color-primary)" : "var(--bg-primary)",
+              color: sortBy === tab.key ? "#fff" : "var(--text-muted)",
+              transition: "all 0.15s",
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 테이블 헤더 — 모바일은 스파크라인 숨김 */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "28px 1fr 110px 76px 64px",
+        gap: 6, padding: "0 10px 8px",
+        fontSize: 10, fontWeight: 600, color: "var(--text-muted)",
+        borderBottom: "1px solid var(--border-color)",
+      }}>
+        <span>#</span>
+        <span>아이템</span>
+        <span className="hidden sm:block" style={{ textAlign: "center" }}>7일 추이</span>
+        <span style={{ textAlign: "right" }}>평균가</span>
+        <span style={{ textAlign: "right" }}>변동</span>
+      </div>
+
+      {/* 아이템 행들 */}
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {sorted.map((item, i) => {
+          const trades = item.trades || [];
+          const prices = trades.map((t: any) => t.unitPrice);
+          const isUp = item.priceChange > 0;
+          const isFlat = item.priceChange === 0;
+          const changeColor = isFlat ? "var(--text-muted)" : isUp ? "#DC2626" : "#2563EB";
+          const arrow = isFlat ? "—" : isUp ? "▲" : "▼";
+          const rowColor = COLORS[i % COLORS.length];
+          const isExpanded = expandedItem === item.itemName;
+
+          return (
+            <div key={item.itemName}>
+              {/* 메인 행 */}
+              <div
+                onClick={() => toggle(item.itemName)}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "28px 1fr 110px 76px 64px",
+                  gap: 6, alignItems: "center",
+                  padding: "9px 10px",
+                  cursor: "pointer",
+                  borderBottom: isExpanded ? "none" : "1px solid var(--border-color)",
+                  background: isExpanded ? "var(--color-primary-light)" : "transparent",
+                  borderRadius: isExpanded ? "8px 8px 0 0" : 0,
+                  transition: "background 0.12s",
+                }}
+                onMouseOver={e => { if (!isExpanded) (e.currentTarget as HTMLElement).style.background = "var(--bg-card-hover)"; }}
+                onMouseOut={e => { if (!isExpanded) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              >
+                {/* 순위 */}
+                <div style={{
+                  width: 22, height: 22, borderRadius: 6,
+                  background: i < 3 ? rowColor : "var(--bg-primary)",
+                  color: i < 3 ? "#fff" : "var(--text-muted)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 10, fontWeight: 800,
+                }}>
+                  {i + 1}
+                </div>
+
+                {/* 아이템명 */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={26} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 12, fontWeight: 600,
+                      color: getRarityColor(item.itemRarity),
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {item.itemName}
+                    </div>
+                    <div style={{ fontSize: 9, color: "var(--text-muted)" }}>
+                      {item.totalVolume}건
+                    </div>
+                  </div>
+                </div>
+
+                {/* 스파크라인 — 모바일 숨김 */}
+                <div className="hidden sm:flex" style={{ justifyContent: "center" }}>
+                  <Sparkline data={prices} width={100} height={26} color={rowColor} />
+                </div>
+
+                {/* 평균가 */}
+                <div style={{ textAlign: "right", fontSize: 11, fontWeight: 600, color: "var(--text-primary)" }}>
+                  {formatGold(item.avgPrice)}
+                </div>
+
+                {/* 변동률 */}
+                <div style={{ textAlign: "right", fontSize: 11, fontWeight: 700, color: changeColor }}>
+                  {arrow}{Math.abs(item.priceChange)}%
+                </div>
+              </div>
+
+              {/* 확장 상세 */}
+              {isExpanded && (
+                <div
+                  className="animate-slide-up"
+                  style={{
+                    padding: "14px",
+                    background: "var(--color-primary-light)",
+                    borderRadius: "0 0 8px 8px",
+                    borderBottom: "1px solid var(--border-color)",
+                    marginBottom: 2,
+                  }}
+                >
+                  {/* 요약 카드 */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 12 }}>
+                    {[
+                      { label: "평균가", value: formatGold(item.avgPrice), color: "var(--text-primary)" },
+                      { label: "최저가", value: formatGold(item.minPrice), color: "#2563EB" },
+                      { label: "최고가", value: formatGold(item.maxPrice), color: "#DC2626" },
+                      { label: "변동률", value: `${isUp ? "+" : ""}${item.priceChange}%`, color: changeColor },
+                    ].map(s => (
+                      <div key={s.label} style={{ padding: "7px 8px", borderRadius: 8, background: "var(--bg-card)" }}>
+                        <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2 }}>{s.label}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: s.color }}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 상세 차트 */}
+                  {trades.length >= 2 && (
+                    <div style={{ background: "var(--bg-card)", borderRadius: 10, padding: "10px 6px 6px" }}>
+                      <DetailChart trades={trades} color={rowColor} />
+                    </div>
+                  )}
+
+                  {/* 일별 내역 */}
+                  {trades.length > 0 && (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", marginBottom: 6 }}>일별 거래</div>
+                      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
+                        {[...trades].reverse().map((t: any, ti: number) => {
+                          const prev = trades[trades.indexOf(t) - 1];
+                          const diff = prev ? ((t.unitPrice - prev.unitPrice) / prev.unitPrice * 100) : 0;
+                          return (
+                            <div key={t.date} style={{
+                              padding: "6px 10px", borderRadius: 8, background: "var(--bg-card)",
+                              border: "1px solid var(--border-color)", fontSize: 10, minWidth: 76, flexShrink: 0,
+                            }}>
+                              <div style={{ color: "var(--text-muted)", marginBottom: 2 }}>{t.date.slice(5)}</div>
+                              <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{formatGold(t.unitPrice)}</div>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
+                                <span style={{ color: "var(--text-muted)" }}>{t.count}건</span>
+                                {diff !== 0 && (
+                                  <span style={{ color: diff > 0 ? "#DC2626" : "#2563EB", fontWeight: 600 }}>
+                                    {diff > 0 ? "+" : ""}{diff.toFixed(1)}%
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 시세 검색 버튼 */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onItemClick(item.itemName); }}
+                    style={{
+                      marginTop: 10, width: "100%", padding: "8px 0",
+                      borderRadius: 8, border: "1px solid var(--color-primary)",
+                      background: "transparent", color: "var(--color-primary)",
+                      fontSize: 11, fontWeight: 600, cursor: "pointer",
+                    }}
+                  >
+                    "{item.itemName}" 상세 시세 검색 →
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════
+   검색 결과 차트
+   ════════════════════════════════════════ */
+function SearchChart({ chartData }: { chartData: { date: string; avg: number; count: number }[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<any>(null);
 
   useEffect(() => {
     let destroyed = false;
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-    const tryBuild = () => {
+    const build = () => {
       const Chart = (window as any).Chart;
       if (!Chart || !canvasRef.current || destroyed) return;
       if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
 
       const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+      const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
       const tickColor = isDark ? "#666" : "#bbb";
       const ctx = canvasRef.current.getContext("2d");
-      if (!ctx) return;
+      if (!ctx || chartData.length === 0) return;
 
-      if (mode === "overview" && insightItems.length > 0) {
-        const datasets = buildOverviewDatasets(insightItems);
-        const { min, max } = calcPercentYRange(datasets);
+      const labels = chartData.map(d => d.date.slice(5));
+      const priceData = chartData.map(d => d.avg);
+      const volData = chartData.map(d => d.count);
+      const isUp = priceData.length >= 2 && priceData[priceData.length - 1] >= priceData[0];
+      const lineColor = isUp ? "#E24B4A" : "#378ADD";
+      const { min: yMin, max: yMax } = calcSingleYRange(priceData);
 
-        chartRef.current = new Chart(ctx, {
-          type: "line",
-          data: { datasets },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: "index", intersect: false },
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: {
-                  label: (c: any) => {
-                    const pct = Number(c.parsed.y).toFixed(1);
-                    const sign = Number(c.parsed.y) >= 0 ? "+" : "";
-                    // 원래 가격도 표시
-                    const item = insightItems.find((it: any) => it.itemName === c.dataset.label);
-                    const trades = item?.trades || [];
-                    const trade = trades.find((t: any) => t.date === c.parsed.x);
-                    const priceStr = trade ? ` (${Number(trade.unitPrice).toLocaleString()}G)` : "";
-                    return ` ${c.dataset.label}: ${sign}${pct}%${priceStr}`;
-                  },
-                },
-              },
+      chartRef.current = new Chart(ctx, {
+        data: {
+          labels,
+          datasets: [
+            {
+              type: "line", label: "평균가", data: priceData,
+              borderColor: lineColor, backgroundColor: lineColor + "12",
+              borderWidth: 2, pointRadius: 3, pointBackgroundColor: lineColor,
+              tension: 0.35, fill: true, yAxisID: "y", order: 1,
             },
-            scales: {
-              x: {
-                type: "category",
-                ticks: { color: tickColor, font: { size: 10 }, maxTicksLimit: 7 },
-                grid: { color: gridColor },
-              },
-              y: {
-                position: "right",
-                min,
-                max,
-                ticks: {
-                  color: tickColor,
-                  font: { size: 10 },
-                  maxTicksLimit: 6,
-                  callback: (v: any) => {
-                    const n = Number(v);
-                    const sign = n >= 0 ? "+" : "";
-                    return `${sign}${n.toFixed(0)}%`;
-                  },
-                },
-                grid: {
-                  color: (ctx: any) => {
-                    // 0% 라인을 더 진하게
-                    if (ctx.tick && ctx.tick.value === 0) {
-                      return isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)";
-                    }
-                    return gridColor;
-                  },
+            {
+              type: "bar", label: "거래량", data: volData,
+              backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
+              borderRadius: 3, yAxisID: "y2", order: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (c: any) => {
+                  if (c.dataset.label === "평균가") return ` 평균가: ${Number(c.parsed.y).toLocaleString()}G`;
+                  return ` 거래량: ${c.parsed.y}건`;
                 },
               },
             },
           },
-        });
-
-      } else if (mode === "search" && chartData.length > 0) {
-        const labels = chartData.map(d => d.date.slice(5));
-        const priceData = chartData.map(d => d.avg);
-        const volData = chartData.map(d => d.count);
-        const isUp = priceData.length >= 2 && priceData[priceData.length - 1] >= priceData[0];
-        const lineColor = isUp ? "#E24B4A" : "#378ADD";
-        const { min: yMin, max: yMax } = calcSingleYRange(priceData);
-
-        chartRef.current = new Chart(ctx, {
-          data: {
-            labels,
-            datasets: [
-              {
-                type: "line", label: "평균가", data: priceData,
-                borderColor: lineColor, backgroundColor: lineColor + "12",
-                borderWidth: 2, pointRadius: 3, pointBackgroundColor: lineColor,
-                tension: 0.35, fill: true, yAxisID: "y", order: 1,
-              },
-              {
-                type: "bar", label: "거래량", data: volData,
-                backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
-                borderRadius: 3, yAxisID: "y2", order: 2,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: "index", intersect: false },
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: {
-                  label: (c: any) => {
-                    if (c.dataset.label === "평균가") return ` 평균가: ${Number(c.parsed.y).toLocaleString()}G`;
-                    return ` 거래량: ${c.parsed.y}건`;
-                  },
-                },
-              },
+          scales: {
+            x: { ticks: { color: tickColor, font: { size: 10 } }, grid: { color: gridColor } },
+            y: {
+              position: "right", min: yMin, ...(yMax !== undefined ? { max: yMax } : {}),
+              ticks: { color: tickColor, font: { size: 10 }, maxTicksLimit: 6, callback: formatYTick },
+              grid: { color: gridColor },
             },
-            scales: {
-              x: {
-                ticks: { color: tickColor, font: { size: 10 } },
-                grid: { color: gridColor },
-              },
-              y: {
-                position: "right",
-                min: yMin,
-                ...(yMax !== undefined ? { max: yMax } : {}),
-                ticks: {
-                  color: tickColor,
-                  font: { size: 10 },
-                  maxTicksLimit: 6,
-                  callback: formatYTick,
-                },
-                grid: { color: gridColor },
-              },
-              y2: { display: false },
-            },
+            y2: { display: false },
           },
-        });
-      }
+        },
+      });
     };
 
-    const startPolling = () => {
-      pollInterval = setInterval(() => {
-        if ((window as any).Chart) {
-          if (pollInterval) clearInterval(pollInterval);
-          if (!destroyed) tryBuild();
-        }
-      }, 100);
-    };
-
-    if ((window as any).Chart) { tryBuild(); }
-    else if (document.getElementById("chartjs-cdn")) { startPolling(); }
-    else {
+    const poll = setInterval(() => { if ((window as any).Chart) { clearInterval(poll); if (!destroyed) build(); } }, 80);
+    if ((window as any).Chart) { clearInterval(poll); build(); }
+    else if (!document.getElementById("chartjs-cdn")) {
       const s = document.createElement("script");
       s.id = "chartjs-cdn";
       s.src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js";
-      s.onload = () => { if (!destroyed) tryBuild(); };
-      s.onerror = () => console.error("[Chart.js] CDN 로드 실패");
+      s.onload = () => { if (!destroyed) build(); };
       document.head.appendChild(s);
     }
 
-    return () => {
-      destroyed = true;
-      if (pollInterval) clearInterval(pollInterval);
-      chartRef.current?.destroy();
-      chartRef.current = null;
-    };
-  }, [mode, chartData, insightItems]);
+    return () => { destroyed = true; clearInterval(poll); chartRef.current?.destroy(); chartRef.current = null; };
+  }, [chartData]);
 
-  return (<div style={{ position: "relative", width: "100%", height: 260 }}><canvas ref={canvasRef} /></div>);
+  return <div style={{ position: "relative", width: "100%", height: 220 }}><canvas ref={canvasRef} /></div>;
 }
 
+/* ════════════════════════════════════════
+   메인 컴포넌트
+   ════════════════════════════════════════ */
 export default function SoldClient() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AuctionSoldItem[]>([]);
@@ -281,7 +522,7 @@ export default function SoldClient() {
   const [insightItems, setInsightItems] = useState<any[]>([]);
   const [chartData, setChartData] = useState<{ date: string; avg: number; count: number }[]>([]);
   const [chartMode, setChartMode] = useState<"overview" | "search">("overview");
-  const [chartTitle, setChartTitle] = useState("인기 아이템 시세 변동률");
+  const [chartTitle, setChartTitle] = useState("");
 
   useEffect(() => {
     fetch("/api/market-insight").then(r => r.json()).then(d => setInsightItems(d.items || [])).catch(() => {});
@@ -297,7 +538,7 @@ export default function SoldClient() {
       const cd: { date: string; avg: number; count: number }[] = data.chartRows || [];
       setChartData(cd);
       setChartMode(cd.length > 0 ? "search" : "overview");
-      setChartTitle(cd.length > 0 ? `"${name}" 시세 추이 (${cd.length}일)` : "인기 아이템 시세 변동률");
+      setChartTitle(cd.length > 0 ? `"${name}" 시세 추이 (${cd.length}일)` : "");
       return data.recentRows || [];
     } catch { return []; }
     finally { setChartLoading(false); }
@@ -317,89 +558,109 @@ export default function SoldClient() {
       setError("서버 연결에 실패했습니다.");
       setResults([]);
       setChartMode("overview");
-      setChartTitle("인기 아이템 시세 변동률");
+      setChartTitle("");
     } finally { setLoading(false); }
   }, [query, fetchHistory]);
 
   useEffect(() => {
     if (!query.trim() && searched) {
-      setSearched(false);
-      setResults([]);
-      setChartMode("overview");
-      setChartTitle("인기 아이템 시세 변동률");
-      setChartData([]);
+      setSearched(false); setResults([]); setChartMode("overview"); setChartTitle(""); setChartData([]);
     }
   }, [query]);
 
-  const handleChipClick = useCallback(async (name: string) => {
+  const handleItemClick = useCallback(async (name: string) => {
     setQuery(name);
-    await fetchHistory(name);
+    setSearched(true);
+    setLoading(true);
+    setChartLoading(true);
+    setError("");
+    addRecent(name);
+    try {
+      const recentRows = await fetchHistory(name);
+      const filtered = (filterByItemName(recentRows, name) as AuctionSoldItem[]);
+      filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
+      setResults(filtered);
+      if (filtered.length === 0 && recentRows.length === 0) setError("거래 내역이 없습니다.");
+    } catch {
+      setError("서버 연결에 실패했습니다.");
+      setResults([]);
+    } finally { setLoading(false); }
   }, [fetchHistory]);
-
-  // 모든 아이템 표시 (최대 20개)
-  const allChipItems = insightItems.slice(0, 20);
 
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* 검색바 */}
       <Card>
-        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>최근 거래 완료된 아이템의 실제 거래 가격을 확인합니다.</p>
-        <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)" buttonLabel="시세 검색" />
+        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
+          최근 거래 완료된 아이템의 실제 거래 가격을 확인합니다.
+        </p>
+        <AutocompleteSearch
+          query={query} setQuery={setQuery} onSearch={search} loading={loading}
+          placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)"
+          buttonLabel="시세 검색"
+        />
       </Card>
-      <Card>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{chartTitle}</div>
-            <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
-              {chartMode === "overview" ? "실체결 기준 · 첫날 대비 % 변동률 · 20개 아이템" : "실체결 기준 · 일별 평균가 + 거래량"}
+
+      {/* ═══ 검색 시: 단일 아이템 차트 ═══ */}
+      {chartMode === "search" && (
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{chartTitle}</div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>실체결 기준 · 일별 평균가 + 거래량</div>
             </div>
-          </div>
-          {chartMode === "search" && (
             <button
-              onClick={() => { setChartMode("overview"); setChartTitle("인기 아이템 시세 변동률"); setChartData([]); }}
+              onClick={() => { setChartMode("overview"); setChartTitle(""); setChartData([]); setSearched(false); setResults([]); setQuery(""); }}
               style={{ fontSize: 10, padding: "4px 10px", borderRadius: 20, border: "0.5px solid var(--border-color)", background: "var(--bg-primary)", color: "var(--text-muted)", cursor: "pointer" }}>
-              전체 보기
+              ← 전체 보기
             </button>
-          )}
-        </div>
-        {chartLoading
-          ? (<div style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 12, color: "var(--text-muted)" }}>차트 로딩 중...</div></div>)
-          : (<PriceChart chartData={chartData} mode={chartMode} itemName={query} insightItems={insightItems} />)
-        }
-        {chartMode === "overview" && allChipItems.length > 0 && (
-          <div style={{ maxHeight: 80, overflowY: "auto", display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12, padding: "2px 0" }}>
-            {allChipItems.map((item, i) => (
-              <button key={item.itemName} onClick={() => handleChipClick(item.itemName)}
-                style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, padding: "3px 8px", borderRadius: 20, border: `0.5px solid ${COLORS[i % COLORS.length]}40`, background: `${COLORS[i % COLORS.length]}12`, color: COLORS[i % COLORS.length], cursor: "pointer", whiteSpace: "nowrap" }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS[i % COLORS.length], display: "inline-block", flexShrink: 0 }} />
-                {item.itemName}
-              </button>
-            ))}
           </div>
-        )}
-        {chartMode === "search" && chartData.length > 0 && (() => {
-          const prices = chartData.map(d => d.avg);
-          const latest = prices[prices.length - 1];
-          const totalVol = chartData.reduce((s, d) => s + d.count, 0);
-          const firstPrice = prices[0];
-          const change = firstPrice > 0 ? Math.round(((latest - firstPrice) / firstPrice) * 10000) / 100 : 0;
-          const isUp = change >= 0;
-          return (
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              {[
-                { label: "최근 평균가", value: `${latest.toLocaleString()}G` },
-                { label: "기간 변동", value: `${isUp ? "+" : ""}${change}%`, color: isUp ? "#E24B4A" : "#378ADD" },
-                { label: "거래 건수", value: `${totalVol}건` },
-              ].map(({ label, value, color }) => (
-                <div key={label} style={{ flex: 1, background: "var(--bg-primary)", borderRadius: 8, padding: "8px 10px" }}>
-                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: color || "var(--text-primary)" }}>{value}</div>
-                </div>
-              ))}
+          {chartLoading
+            ? <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 12, color: "var(--text-muted)" }}>차트 로딩 중...</div></div>
+            : <SearchChart chartData={chartData} />
+          }
+          {chartData.length > 0 && (() => {
+            const prices = chartData.map(d => d.avg);
+            const latest = prices[prices.length - 1];
+            const totalVol = chartData.reduce((s, d) => s + d.count, 0);
+            const firstPrice = prices[0];
+            const change = firstPrice > 0 ? Math.round(((latest - firstPrice) / firstPrice) * 10000) / 100 : 0;
+            const isUp = change >= 0;
+            return (
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                {[
+                  { label: "최근 평균가", value: `${latest.toLocaleString()}G` },
+                  { label: "기간 변동", value: `${isUp ? "+" : ""}${change}%`, color: isUp ? "#E24B4A" : "#378ADD" },
+                  { label: "거래 건수", value: `${totalVol}건` },
+                ].map(({ label, value, color }) => (
+                  <div key={label} style={{ flex: 1, background: "var(--bg-primary)", borderRadius: 8, padding: "8px 10px" }}>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: color || "var(--text-primary)" }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </Card>
+      )}
+
+      {/* ═══ 기본 뷰: 인사이트 대시보드 ═══ */}
+      {chartMode === "overview" && !searched && insightItems.length > 0 && (
+        <Card>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>인기 아이템 시세 현황</div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>
+              실체결 기준 · 7일간 거래 데이터 · 행 클릭 시 상세 차트
             </div>
-          );
-        })()}
-      </Card>
+          </div>
+          <OverviewDashboard items={insightItems} onItemClick={handleItemClick} />
+        </Card>
+      )}
+
+      {/* 검색 헬퍼 */}
       {!searched && <SearchHelpers popular={popular} onSelect={n => setQuery(n)} />}
+
+      {/* 검색 결과 */}
       <ErrorMsg msg={error} />
       {loading && <SkeletonList count={5} />}
       {!loading && results.length > 0 && (
