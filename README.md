@@ -1,78 +1,74 @@
-# 던프 | 던파 경매장 시세 검색 — 아이템 최저가 한눈에
+# 던프 (dnfprice) — 던전앤파이터 경매장 시세 검색
 
-던전앤파이터 Neople Open API를 활용한 경매장 시세 알림 및 아이템 검색 서비스입니다.
+던전앤파이터 Neople Open API를 활용한 경매장 시세 알림, 아이템 검색, 시장 분석 서비스입니다.
+
+> **https://dnfprice.link**
+
+---
 
 ## 핵심 기능
+
+### 경매장 인기 아이템 (메인)
+- 현재 경매장에 등록된 매물이 많은 아이템 TOP 20
+- 실시간 Neople API 데이터 기반 랭킹
+- 서버 워밍업 + stale-while-revalidate 캐싱으로 즉시 로딩
+
+### 종결템 시세
+- 칭호, 크리쳐, 오라, 마법부여(카드) 카테고리별 Top 3
+- 종결템 목록 + 실거래 데이터 기반 평균 체결가
+- 경매장 현재 최저가와 비교
+- 이상치(outlier) 제거 후 평균 산출
+
+### 경매장 인사이트
+- 주요 아이템 거래 규모, 시세 추이, 가격 변동률
+- DynamoDB 일별 스냅샷 기반 7일간 시세 히스토리
+- 거래 규모순 / 변동률순 정렬
+- 아이템별 미니 차트 + 상세 차트
+
+### 시세 검색
+- 최근 거래 완료된 아이템의 실제 거래 가격 조회
+- 카드 뷰 (SVG 스파크라인 + 통계) / 리스트 뷰 전환
+- 개별 아이템 클릭 시 Chart.js 기반 상세 차트 (평균가 + 거래량)
+- 인사이트 데이터 연동 대시보드
+
+### 경매장 아이템 검색
+- 현재 경매장 등록 아이템 검색 (최대 800건 수집)
+- 개당 가격 낮은 순 정렬
+- 강화/증폭/제련/업그레이드 상세 정보
+- 패키지 구매 가이드 (경매장 vs 세라샵 가격 비교)
 
 ### 시세 알림
 - 이메일 입력만으로 알림 등록 (로그인 불필요)
 - 목표 가격 도달 시 이메일 발송 (Resend)
-- **1회 발송 후 자동 종료**
+- 1회 발송 후 자동 종료
 - 이메일당 최대 3개, 중복 등록 방지, 스팸 방지 레이트 리밋
-
-### 경매장
-- 경매장 등록 아이템 검색 (API #16)
-- 경매장 등록 아이템 조회 (API #17)
-- 경매장 시세 검색 (API #18)
-
-### 아바타 마켓
-- 아바타 마켓 상품 검색 (API #19)
-- 아바타 마켓 상품 조회 (API #20)
-- 아바타 마켓 시세 검색 (API #21)
-- 아바타 마켓 시세 조회 (API #22)
-- 아바타 마켓 해시태그 (API #23)
+- API Gateway + Lambda + DynamoDB 기반
 
 ### 아이템 DB
-- 아이템 검색 (API #24)
-- 아이템 상세 정보 (API #25)
-- 아이템 상점 판매 정보 (API #26)
-- 다중 아이템 조회 (API #27)
-- 아이템 해시태그 (API #28)
-- 세트 아이템 검색 (API #29)
+- 던파 전체 아이템 상세 스펙 조회
+- 천해천 신규 아이템 (Lv.115 서약/결정) 하이라이트
+- 세트 아이템 검색 + 연도별 목록
 
-### 인기 아이템
-- 조회수 기반 인기 검색 아이템 표시
-- 홈 화면에서 바로 알림 등록 가능
+---
 
 ## 기술 스택
 
-- **Next.js 14** (App Router)
-- **TypeScript**
-- **Tailwind CSS**
-- **Neople Open API**
-- **Resend** (이메일 발송)
-- **AWS Lambda** (시세 수집 + 알림 체크, 선택사항)
+| 영역 | 기술 |
+|------|------|
+| 프레임워크 | Next.js 14 (App Router, standalone output) |
+| 언어 | TypeScript |
+| 스타일링 | Tailwind CSS + CSS Variables (디자인 토큰) |
+| 차트 | Chart.js 4 (CDN, 검색 상세) + SVG 스파크라인 (대시보드) |
+| 외부 API | Neople Open API (던파 경매장/아이템) |
+| 이메일 | Resend API |
+| DB | AWS DynamoDB (알림 규칙, 일별 시세 히스토리) |
+| 알림 체크 | AWS Lambda + EventBridge Scheduler |
+| 배포 | Docker → AWS ECR → ECS (Fargate) |
+| CDN | AWS CloudFront |
+| CI/CD | GitHub Actions (OIDC 인증) |
+| 폰트 | Pretendard Variable (CDN) |
 
-## 실행 방법
-
-### 1. API 키 발급
-
-- [Neople Developers](https://developers.neople.co.kr) — 던파 API 키
-- [Resend](https://resend.com) — 이메일 API 키 (이메일 알림 사용 시)
-
-### 2. 프로젝트 설정
-
-```bash
-npm install
-
-cp .env.local .env.local
-```
-
-`.env.local` 파일에 키를 입력하세요:
-
-```
-NEOPLE_API_KEY=발급받은_키
-RESEND_API_KEY=발급받은_키
-FROM_EMAIL=alerts@yourdomain.com
-```
-
-### 3. 개발 서버 실행
-
-```bash
-npm run dev
-```
-
-[http://localhost:3000](http://localhost:3000) 에서 확인하세요.
+---
 
 ## 프로젝트 구조
 
@@ -80,45 +76,114 @@ npm run dev
 dnf-auction/
 ├── src/
 │   ├── app/
-│   │   ├── api/
-│   │   │   ├── auction/              # 16. 경매장 등록 아이템 검색
-│   │   │   ├── auction-detail/       # 17. 경매장 등록 아이템 조회
-│   │   │   ├── auction-sold/         # 18. 경매장 시세 검색
-│   │   │   ├── avatar-market/        # 19. 아바타 마켓 상품 검색
-│   │   │   ├── avatar-market-detail/ # 20. 아바타 마켓 상품 조회
-│   │   │   ├── avatar-market-sold/   # 21. 아바타 마켓 시세 검색
-│   │   │   ├── avatar-market-sold-detail/ # 22. 시세 조회
-│   │   │   ├── avatar-market-hashtag/# 23. 해시태그
-│   │   │   ├── items/                # 24. 아이템 검색
-│   │   │   ├── item-detail/          # 25. 아이템 상세
-│   │   │   ├── item-shop/            # 26. 상점 판매 정보
-│   │   │   ├── multi-items/          # 27. 다중 아이템 조회
-│   │   │   ├── item-hashtag/         # 28. 아이템 해시태그
-│   │   │   ├── setitems/             # 29. 세트 아이템 검색
-│   │   │   ├── alert-register/       # 알림 등록 API
-│   │   │   ├── alert/                # 알림 조회/삭제 API
-│   │   │   └── popular-items/        # 인기 아이템 API
-│   │   ├── globals.css
-│   │   ├── layout.tsx
-│   │   └── page.tsx                  # 메인 UI
+│   │   ├── page.tsx                     # 메인 (인기 아이템 TOP 20)
+│   │   ├── HomeClient.tsx               # 메인 클라이언트 (인메모리 캐시)
+│   │   ├── layout.tsx                   # 공통 레이아웃 + 메타데이터
+│   │   ├── globals.css                  # 디자인 토큰 + 전역 스타일
+│   │   │
+│   │   ├── bis/                         # 종결템 시세
+│   │   │   ├── page.tsx
+│   │   │   └── BisClient.tsx
+│   │   ├── insight/                     # 경매장 인사이트
+│   │   │   ├── page.tsx
+│   │   │   └── InsightClient.tsx
+│   │   ├── auction/                     # 경매장 아이템 검색
+│   │   │   ├── page.tsx
+│   │   │   └── AuctionClient.tsx
+│   │   ├── sold/                        # 시세 검색
+│   │   │   ├── page.tsx
+│   │   │   └── SoldClient.tsx
+│   │   ├── alerts/                      # 시세 알림
+│   │   │   ├── page.tsx
+│   │   │   └── AlertClient.tsx
+│   │   ├── items/                       # 아이템 DB
+│   │   │   ├── page.tsx
+│   │   │   └── ItemsClient.tsx
+│   │   ├── setitems/                    # 세트 아이템
+│   │   │   ├── page.tsx
+│   │   │   └── SetItemsClient.tsx
+│   │   ├── guide/page.tsx               # 던린이 가이드
+│   │   ├── about/page.tsx               # 소개
+│   │   ├── privacy/page.tsx             # 개인정보 처리방침
+│   │   ├── terms/page.tsx               # 이용약관
+│   │   ├── contact/page.tsx             # 문의
+│   │   │
+│   │   └── api/
+│   │       ├── trending/route.ts        # 인기 아이템 (공유 캐시)
+│   │       ├── bis/route.ts             # 종결템 시세 (SWR 캐시)
+│   │       ├── market-insight/route.ts  # 인사이트 (SWR 캐시)
+│   │       ├── auction/route.ts         # 경매장 검색 (페이지네이션)
+│   │       ├── auction-detail/route.ts  # 경매장 상세
+│   │       ├── auction-sold/route.ts    # 시세 검색
+│   │       ├── auction-sold-history/    # 시세 히스토리 (DB + API)
+│   │       ├── alert-register/route.ts  # 알림 등록 (레이트 리밋)
+│   │       ├── alert/route.ts           # 알림 조회/삭제
+│   │       ├── items/route.ts           # 아이템 검색
+│   │       ├── item-detail/route.ts     # 아이템 상세
+│   │       ├── item-shop/route.ts       # 상점 판매 정보
+│   │       ├── item-hashtag/route.ts    # 아이템 해시태그
+│   │       ├── multi-items/route.ts     # 다중 아이템 조회
+│   │       ├── setitems/route.ts        # 세트 아이템 검색
+│   │       ├── setitems-all/route.ts    # 연도별 세트 (캐싱)
+│   │       ├── popular-items/route.ts   # 인기 아이템 (auction-sold)
+│   │       └── price-snapshot/route.ts  # 시세 스냅샷 트리거
+│   │
+│   ├── components/
+│   │   ├── Nav.tsx                      # 네비게이션 + 푸터
+│   │   └── shared.tsx                   # 공통 컴포넌트 (검색, 카드, 자동완성 등)
+│   │
 │   └── lib/
-│       ├── types.ts                  # 전체 API 타입 정의
-│       ├── utils.ts                  # 유틸리티 함수
-│       ├── neople.ts                 # Neople API 호출 모듈
-│       ├── alert-store.ts            # 알림 저장소 (JSON file)
-│       └── rate-limit.ts             # 스팸 방지 레이트 리미터
+│       ├── neople.ts                    # Neople API 호출 모듈
+│       ├── auction-shared-cache.ts      # 경매장 공유 캐시 (SWR 패턴)
+│       ├── price-history.ts             # DynamoDB 시세 히스토리
+│       ├── snapshot-collector.ts        # 일별 시세 스냅샷 수집
+│       ├── alert-store.ts              # 알림 저장소 (DynamoDB)
+│       ├── rate-limit.ts               # 인메모리 레이트 리미터
+│       ├── types.ts                     # 전체 타입 정의
+│       └── utils.ts                     # 유틸리티 (포맷, 색상 등)
+│
 ├── lambda/
-│   ├── price-collector/
-│   │   └── index.mjs                # 시세 수집 Lambda
-│   └── alert-checker/
-│       └── index.mjs                # 알림 체크 + Resend 발송 Lambda
-├── data/                             # 런타임 데이터 (자동 생성)
-├── .env.local.example
-├── next.config.js
-├── package.json
+│   ├── price-collector/index.mjs        # 시세 수집 Lambda
+│   ├── price-checker/index.mjs          # 알림 체크 + 이메일 발송 Lambda
+│   └── alert-checker/index.mjs          # 알림 체크 Lambda (대체)
+│
+├── public/
+│   ├── sitemap.xml                      # SEO 사이트맵
+│   └── ads.txt                          # AdSense 인증
+│
+├── Dockerfile                           # 멀티스테이지 빌드
+├── .github/workflows/deploy.yml         # CI/CD (ECR → ECS)
+├── next.config.js                       # standalone output
 ├── tailwind.config.ts
-└── tsconfig.json
+├── tsconfig.json
+└── package.json
 ```
+
+---
+
+## 성능 최적화
+
+### 서버 캐싱 (Stale-While-Revalidate)
+
+모든 주요 API에 3단계 캐시 전략을 적용합니다:
+
+| 상태 | 동작 | 사용자 체감 |
+|------|------|------------|
+| FRESH (TTL 이내) | 캐시 즉시 반환 | 즉시 로딩 |
+| STALE (TTL ~ 30분) | 캐시 즉시 반환 + 백그라운드 갱신 | 즉시 로딩 |
+| EXPIRED (30분+) | 새로 빌드 후 반환 | 초기 로딩만 대기 |
+
+서버 시작 시 워밍업으로 EXPIRED 상태를 최소화합니다.
+
+### 클라이언트 캐싱
+
+각 페이지 컴포넌트에 모듈 스코프 인메모리 캐시를 두어 탭 전환 시 API 호출 없이 즉시 렌더링합니다.
+
+### 차트 성능
+
+대시보드 개요에서는 SVG 스파크라인(경량, 즉시 렌더링)을 사용하고, 상세 검색에서만 Chart.js를 CDN으로 지연 로드합니다.
+
+---
 
 ## API 프록시 구조
 
@@ -128,63 +193,60 @@ dnf-auction/
 브라우저 → /api/auction → api.neople.co.kr/df/auction?apikey=***
 ```
 
-## AWS Lambda 배포 (선택사항)
+---
 
-시세 알림 자동 체크를 위한 Lambda 배포입니다. 웹 UI만 사용할 경우 배포하지 않아도 됩니다.
+## 환경변수
 
-### 필요 AWS 서비스
+```env
+# 필수
+NEOPLE_API_KEY=                    # Neople Open API 키
 
-- **EventBridge Scheduler** — 5분 주기 트리거
-- **Lambda** — price-collector, alert-checker
-- **DynamoDB** — price_history, alert_rules 테이블
+# 알림 기능 (선택)
+ALERT_API_URL=                     # API Gateway 엔드포인트
+AWS_REGION=ap-northeast-2
+
+# 시세 히스토리 (선택)
+PRICE_HISTORY_TABLE=dnf-price-history
+
+# 이메일 (Lambda에서 사용)
+RESEND_API_KEY=
+FROM_EMAIL=
+```
+
+---
+
+## 실행 방법
+
+## 배포
+
+GitHub Actions가 `master` 브랜치 push 시 자동 배포합니다:
+
+1. Docker 이미지 빌드
+2. AWS ECR에 push
+3. ECS 서비스 강제 재배포
+4. CloudFront 캐시 무효화
+
+---
+
+## AWS 인프라 (선택사항)
 
 ### DynamoDB 테이블
 
-**price_history**
-| 키 | 설명 |
-|----|------|
-| PK (Partition Key) | `ITEM#아이템명` |
-| SK (Sort Key) | `TS#2026-03-26T14:30:00` |
-| avgPrice, minPrice, maxPrice | Number |
-| volume | Number (등록 건수) |
-| TTL | Number (90일 후 자동 삭제) |
+**dnf-auction-alerts** (알림 규칙)
+- PK: `alertId` (String)
+- 속성: email, itemName, targetPrice, priceCondition, isActive, createdAt
 
-**alert_rules**
-| 키 | 설명 |
-|----|------|
-| PK | `USER#이메일` |
-| SK | `RULE#아이템명#조건#목표가` |
-| itemName (GSI) | String |
-| condition | `below` / `above` |
-| targetPrice | Number |
-| email | String |
-| fulfilled | Boolean |
+**dnf-price-history** (일별 시세)
+- PK: `itemName` (String), SK: `date` (String, "2026-04-07")
+- 속성: avgPrice, minPrice, maxPrice, totalVolume, totalValue, itemId, itemRarity
+- TTL: 90일 자동 삭제
 
-### Lambda 배포
+### Lambda
 
-```bash
-cd lambda/price-collector
-zip -r price-collector.zip index.mjs
-aws lambda update-function-code \
-  --function-name price-collector \
-  --zip-file fileb://price-collector.zip
+- **price-collector**: EventBridge 5분 주기, 감시 아이템 시세 수집 → DynamoDB
+- **price-checker (alert-checker)**: 알림 조건 매칭 → Resend 이메일 발송
 
-cd ../alert-checker
-zip -r alert-checker.zip index.mjs
-aws lambda update-function-code \
-  --function-name alert-checker \
-  --zip-file fileb://alert-checker.zip
-```
-
-### EventBridge 스케줄 설정
-
-```bash
-aws scheduler create-schedule \
-  --name dnf-price-collector \
-  --schedule-expression "rate(5 minutes)" \
-  --target '{"Arn":"arn:aws:lambda:REGION:ACCOUNT:function:price-collector","RoleArn":"arn:aws:iam::ACCOUNT:role/scheduler-role"}' \
-  --flexible-time-window '{"Mode":"OFF"}'
-```
+---
 
 ## 스팸 방지
 
@@ -192,17 +254,13 @@ aws scheduler create-schedule \
 - IP당 시간 5회 요청 제한
 - 이메일당 최대 3개 알림 등록
 - 동일 조건 중복 등록 방지
-- 1회 발송 후 자동 종료 (무한 알림 방지)
+- 1회 발송 후 자동 종료
 
-## 비용
-
-- **Next.js 웹앱**: Vercel 무료 플랜으로 운영 가능
-- **Resend**: 월 3,000건 무료
-- **AWS Lambda**: 프리티어 월 100만 건 (5분 간격 ≈ 월 8,640건)
-- **DynamoDB**: 프리티어 25GB 저장 + 25 WCU/RCU
+---
 
 ## 참고
 
 - 경매장 시세는 최근 100건 또는 최대 1개월 전까지의 거래 내역만 제공됩니다.
-- Neople API 호출 제한을 확인하고 적절한 주기를 설정하세요.
+- 등록 매물이 많은 아이템은 API 한계로 일부만 표시될 수 있습니다.
 - 이 프로젝트는 Neople/Nexon과 관련이 없는 비공식 프로젝트입니다.
+- 데이터 출처: [Neople Open API](https://developers.neople.co.kr)
