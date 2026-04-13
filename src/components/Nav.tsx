@@ -16,11 +16,287 @@ const NAV_ITEMS = [
   { href: "/guide", label: "던린이 가이드" },
 ];
 
+function itemImageUrl(id: string) {
+  return `https://img-api.neople.co.kr/df/items/${id}`;
+}
+
+function getRarityColorNav(rarity: string): string {
+  const map: Record<string, string> = {
+    커먼: "#6B7280", 언커먼: "#16A34A", 레어: "#2563EB",
+    유니크: "#9333EA", 에픽: "#CA8A04", 크로니클: "#EA580C",
+    레전더리: "#DC2626", 신화: "#DB2777",
+  };
+  return map[rarity] || "var(--text-primary)";
+}
+
+function NavItemImg({ itemId, itemName, rarity, size = 24 }: { itemId: string; itemName: string; rarity?: string; size?: number }) {
+  const [err, setErr] = useState(false);
+  const rc = rarity ? getRarityColorNav(rarity) : "var(--text-muted)";
+  if (!itemId || err) {
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: 6,
+        background: `${rc}12`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 8, fontWeight: 700, color: rc, flexShrink: 0,
+      }}>
+        {itemName?.slice(0, 2) || "??"}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={itemImageUrl(itemId)} alt={itemName}
+      width={size} height={size}
+      style={{ borderRadius: 6, flexShrink: 0, objectFit: "contain", background: `${rc}08`, border: `1px solid ${rc}20` }}
+      loading="lazy" onError={() => setErr(true)}
+    />
+  );
+}
+
+/* ══ 자동완성 검색 컴포넌트 (공통 로직) ══ */
+function useNavAutocomplete(onNavigate: (name: string) => void) {
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showDrop, setShowDrop] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const skipRef = useRef(false);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setShowDrop(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  useEffect(() => {
+    if (skipRef.current) { skipRef.current = false; return; }
+    const t = query.trim();
+    if (t.length < 1) { setSuggestions([]); setShowDrop(false); return; }
+    const ctrl = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/auction?itemName=${encodeURIComponent(t)}&wordType=full&limit=400&sort[unitPrice]=asc`,
+          { signal: ctrl.signal }
+        );
+        if (!res.ok) { setSuggestions([]); setShowDrop(false); return; }
+        const data = await res.json();
+        const rows: any[] = data.rows || [];
+        const tLower = t.toLowerCase();
+        const nameMap = new Map<string, any>();
+        for (const r of rows) {
+          const n = r.itemName || "";
+          if (!n || !n.toLowerCase().includes(tLower)) continue;
+          if (!nameMap.has(n)) {
+            nameMap.set(n, r);
+          } else {
+            const existing = nameMap.get(n)!;
+            if ((r.unitPrice || Infinity) < (existing.unitPrice || Infinity)) nameMap.set(n, r);
+          }
+        }
+        const uniq = [...nameMap.values()].sort((a, b) => (a.unitPrice || 0) - (b.unitPrice || 0));
+        setSuggestions(uniq.slice(0, 8));
+        setShowDrop(uniq.length > 0);
+      } catch (e: any) {
+        if (e.name !== "AbortError") { setSuggestions([]); setShowDrop(false); }
+      }
+    }, 400);
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, [query]);
+
+  const pick = (name: string) => {
+    skipRef.current = true;
+    setQuery("");
+    setShowDrop(false);
+    onNavigate(name);
+  };
+
+  const handleSearch = () => {
+    const q = query.trim();
+    if (!q) return;
+    setShowDrop(false);
+    setQuery("");
+    onNavigate(q);
+  };
+
+  return { query, setQuery, suggestions, showDrop, setShowDrop, wrapRef, pick, handleSearch };
+}
+
+/* ══ 데스크톱 검색 ══ */
+function NavSearchDesktop({ onNavigate }: { onNavigate: (name: string) => void }) {
+  const { query, setQuery, suggestions, showDrop, wrapRef, pick, handleSearch } = useNavAutocomplete(onNavigate);
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleSearch(); }}
+          onFocus={() => { if (suggestions.length > 0) (undefined as any)/* handled by hook */; }}
+          placeholder="시세 검색"
+          style={{
+            width: 150,
+            padding: "6px 10px",
+            borderRadius: 6,
+            border: "1.5px solid var(--border-color)",
+            background: "var(--bg-primary)",
+            color: "var(--text-primary)",
+            fontSize: 12,
+            transition: "border-color 0.15s",
+          }}
+        />
+        <button
+          onClick={handleSearch}
+          disabled={!query.trim()}
+          style={{
+            padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+            background: "var(--color-primary)", color: "#fff", border: "none",
+            cursor: query.trim() ? "pointer" : "not-allowed",
+            opacity: query.trim() ? 1 : 0.4, flexShrink: 0, whiteSpace: "nowrap",
+          }}
+        >
+          검색
+        </button>
+      </div>
+
+      {showDrop && suggestions.length > 0 && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0,
+          marginTop: 4, zIndex: 100, minWidth: 300,
+          background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
+          borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+          maxHeight: 340, overflowY: "auto",
+        }}>
+          {suggestions.map((item: any, i: number) => {
+            const name = item.itemName || "";
+            const id = item.itemId || "";
+            const rarity = item.itemRarity || "";
+            return (
+              <div
+                key={`${id || name}-${i}`}
+                onMouseDown={e => { e.preventDefault(); pick(name); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "8px 12px", cursor: "pointer", transition: "background 0.1s",
+                  borderBottom: i < suggestions.length - 1 ? "1px solid var(--border-color)" : "none",
+                }}
+                onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "var(--color-primary-light)"; }}
+                onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              >
+                <NavItemImg itemId={id} itemName={name} rarity={rarity} size={28} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 13, fontWeight: 500,
+                    color: rarity ? getRarityColorNav(rarity) : "var(--text-primary)",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>{name}</div>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                    {item.itemAvailableLevel !== undefined && `Lv.${item.itemAvailableLevel}`}
+                    {item.itemType && ` · ${item.itemType}`}
+                    {rarity && ` · ${rarity}`}
+                  </div>
+                </div>
+                {item.unitPrice !== undefined && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", flexShrink: 0 }}>
+                    {item.unitPrice.toLocaleString()}G
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══ 모바일 검색 ══ */
+function NavSearchMobile({ onNavigate }: { onNavigate: (name: string) => void }) {
+  const { query, setQuery, suggestions, showDrop, wrapRef, pick, handleSearch } = useNavAutocomplete(onNavigate);
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <div style={{ display: "flex", gap: 4 }}>
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleSearch(); }}
+          placeholder="시세 검색"
+          style={{
+            width: 110, padding: "6px 8px", borderRadius: 6,
+            border: "1.5px solid var(--border-color)",
+            background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 11,
+          }}
+        />
+        <button
+          onClick={handleSearch}
+          disabled={!query.trim()}
+          style={{
+            padding: "6px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
+            background: "var(--color-primary)", color: "#fff", border: "none",
+            cursor: query.trim() ? "pointer" : "not-allowed",
+            opacity: query.trim() ? 1 : 0.4, flexShrink: 0,
+          }}
+        >
+          검색
+        </button>
+      </div>
+
+      {showDrop && suggestions.length > 0 && (
+        <div style={{
+          position: "absolute", top: "100%", right: 0,
+          marginTop: 4, zIndex: 100, minWidth: 260, width: "max-content",
+          background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
+          borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+          maxHeight: 280, overflowY: "auto",
+        }}>
+          {suggestions.map((item: any, i: number) => {
+            const name = item.itemName || "";
+            const id = item.itemId || "";
+            const rarity = item.itemRarity || "";
+            return (
+              <div
+                key={`${id || name}-${i}`}
+                onMouseDown={e => { e.preventDefault(); pick(name); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "7px 10px", cursor: "pointer", transition: "background 0.1s",
+                  borderBottom: i < suggestions.length - 1 ? "1px solid var(--border-color)" : "none",
+                }}
+                onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "var(--color-primary-light)"; }}
+                onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              >
+                <NavItemImg itemId={id} itemName={name} rarity={rarity} size={24} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 12, fontWeight: 500,
+                    color: rarity ? getRarityColorNav(rarity) : "var(--text-primary)",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>{name}</div>
+                </div>
+                {item.unitPrice !== undefined && (
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", flexShrink: 0 }}>
+                    {item.unitPrice.toLocaleString()}G
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Nav() {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [navQuery, setNavQuery] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,16 +307,13 @@ export default function Nav() {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  const handleNavSearch = () => {
-    const q = navQuery.trim();
-    if (!q) return;
-    router.push(`/sold?q=${encodeURIComponent(q)}`);
-    setNavQuery("");
+  const handleNavigate = (itemName: string) => {
+    router.push(`/sold?q=${encodeURIComponent(itemName)}`);
   };
 
   return (
     <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--color-primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900 }}>D</div>
           <div style={{ textAlign: "left" }}>
@@ -49,47 +322,8 @@ export default function Nav() {
           </div>
         </Link>
 
-        {/* ── 빠른 시세 검색 (데스크톱) ── */}
-        <div className="hidden md:flex" style={{ alignItems: "center", gap: 4, flex: "0 1 220px" }}>
-          <input
-            type="text"
-            value={navQuery}
-            onChange={e => setNavQuery(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") handleNavSearch(); }}
-            placeholder="시세 빠른 검색"
-            style={{
-              width: "100%",
-              padding: "6px 10px",
-              borderRadius: 6,
-              border: "1.5px solid var(--border-color)",
-              background: "var(--bg-primary)",
-              color: "var(--text-primary)",
-              fontSize: 12,
-              transition: "border-color 0.15s",
-            }}
-          />
-          <button
-            onClick={handleNavSearch}
-            disabled={!navQuery.trim()}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 6,
-              fontSize: 11,
-              fontWeight: 600,
-              background: "var(--color-primary)",
-              color: "#fff",
-              border: "none",
-              cursor: navQuery.trim() ? "pointer" : "not-allowed",
-              opacity: navQuery.trim() ? 1 : 0.4,
-              flexShrink: 0,
-              whiteSpace: "nowrap",
-            }}
-          >
-            검색
-          </button>
-        </div>
-
-        <nav className="hidden md:flex" style={{ gap: 4 }}>
+        {/* ── 데스크톱: 탭들 + 구분선 + 검색 ── */}
+        <nav className="hidden md:flex" style={{ gap: 4, alignItems: "center" }}>
           {NAV_ITEMS.map((t) => (
             <Link
               key={t.href}
@@ -106,50 +340,18 @@ export default function Nav() {
               {t.label}
             </Link>
           ))}
+
+          {/* 구분선 + 검색 (던린이 가이드 바로 뒤) */}
+          <div style={{ width: 1, height: 20, background: "var(--border-color)", margin: "0 4px", flexShrink: 0 }} />
+          <NavSearchDesktop onNavigate={handleNavigate} />
         </nav>
-        <div className="md:hidden relative" ref={menuRef}>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            {/* 모바일 빠른 검색 */}
-            <div style={{ display: "flex", gap: 4 }}>
-              <input
-                type="text"
-                value={navQuery}
-                onChange={e => setNavQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") handleNavSearch(); }}
-                placeholder="시세 검색"
-                style={{
-                  width: 100,
-                  padding: "6px 8px",
-                  borderRadius: 6,
-                  border: "1.5px solid var(--border-color)",
-                  background: "var(--bg-primary)",
-                  color: "var(--text-primary)",
-                  fontSize: 11,
-                }}
-              />
-              <button
-                onClick={handleNavSearch}
-                disabled={!navQuery.trim()}
-                style={{
-                  padding: "6px 8px",
-                  borderRadius: 6,
-                  fontSize: 10,
-                  fontWeight: 600,
-                  background: "var(--color-primary)",
-                  color: "#fff",
-                  border: "none",
-                  cursor: navQuery.trim() ? "pointer" : "not-allowed",
-                  opacity: navQuery.trim() ? 1 : 0.4,
-                  flexShrink: 0,
-                }}
-              >
-                검색
-              </button>
-            </div>
-            <button onClick={() => setMenuOpen(!menuOpen)} style={{ padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 500, background: "var(--bg-primary)", border: "1px solid var(--border-color)", color: "var(--text-secondary)", cursor: "pointer" }}>메뉴 ▾</button>
-          </div>
+
+        {/* ── 모바일 ── */}
+        <div className="md:hidden" style={{ display: "flex", gap: 6, alignItems: "center" }} ref={menuRef}>
+          <NavSearchMobile onNavigate={handleNavigate} />
+          <button onClick={() => setMenuOpen(!menuOpen)} style={{ padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 500, background: "var(--bg-primary)", border: "1px solid var(--border-color)", color: "var(--text-secondary)", cursor: "pointer", flexShrink: 0 }}>메뉴 ▾</button>
           {menuOpen && (
-            <div className="animate-slide-down" style={{ position: "absolute", right: 0, top: "100%", marginTop: 4, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", minWidth: 160, zIndex: 50, padding: "4px 0" }}>
+            <div className="animate-slide-down" style={{ position: "absolute", right: 16, top: "100%", marginTop: 4, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", minWidth: 160, zIndex: 50, padding: "4px 0" }}>
               {NAV_ITEMS.map((t) => (
                 <Link key={t.href} href={t.href} onClick={() => setMenuOpen(false)} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 12, textDecoration: "none", color: pathname === t.href ? "var(--color-primary)" : t.href === "/guide" ? "var(--color-accent)" : "var(--text-secondary)", background: pathname === t.href ? "var(--color-primary-light)" : "transparent" }}>
                   {t.label}
