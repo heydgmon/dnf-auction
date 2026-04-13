@@ -77,7 +77,7 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(
-          `/api/auction?itemName=${encodeURIComponent(t)}&wordType=full&limit=400&sort[unitPrice]=asc`,
+          `/api/auction?itemName=${encodeURIComponent(t)}&wordType=full&limit=400`,
           { signal: ctrl.signal }
         );
         if (!res.ok) { setSuggestions([]); setShowDrop(false); return; }
@@ -96,12 +96,13 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
           }
         }
         const uniq = [...nameMap.values()].sort((a, b) => (a.unitPrice || 0) - (b.unitPrice || 0));
-        setSuggestions(uniq.slice(0, 8));
-        setShowDrop(uniq.length > 0);
+        const result = uniq.slice(0, 8);
+        setSuggestions(result);
+        setShowDrop(result.length > 0);
       } catch (e: any) {
         if (e.name !== "AbortError") { setSuggestions([]); setShowDrop(false); }
       }
-    }, 400);
+    }, 350);
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [query]);
 
@@ -121,16 +122,17 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
   };
 
   return (
-    <div ref={wrapRef} style={{ position: "relative", flexShrink: 0 }}>
+    <div ref={wrapRef} style={{ position: "relative", flexShrink: 0, marginLeft: "auto" }}>
       <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
         <input
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") handleSearch(); }}
+          onFocus={() => { if (suggestions.length > 0) setShowDrop(true); }}
           placeholder="시세 검색"
           style={{
-            width: 120,
+            width: 130,
             padding: "6px 10px",
             borderRadius: 6,
             border: "1.5px solid var(--border-color)",
@@ -143,7 +145,7 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
           onClick={handleSearch}
           disabled={!query.trim()}
           style={{
-            padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+            padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 600,
             background: "var(--color-primary)", color: "#fff", border: "none",
             cursor: query.trim() ? "pointer" : "not-allowed",
             opacity: query.trim() ? 1 : 0.4, flexShrink: 0, whiteSpace: "nowrap",
@@ -159,7 +161,7 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
           marginTop: 4, zIndex: 100, minWidth: 300,
           background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
           borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-          maxHeight: 340, overflowY: "auto",
+          maxHeight: 360, overflowY: "auto",
         }}>
           {suggestions.map((item: any, i: number) => {
             const name = item.itemName || "";
@@ -215,20 +217,20 @@ export default function Nav() {
   return (
     <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px" }}>
-        {/* 1행: 로고 — 전체 너비 */}
+        {/* 1행: 로고 — 중앙 정렬, 배경 없음 */}
         <Link href="/" style={{
-          display: "flex", alignItems: "center", gap: 12, textDecoration: "none",
-          padding: "8px 16px", marginBottom: 10,
-          background: "var(--color-primary)", borderRadius: 10,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          gap: 10, textDecoration: "none",
+          padding: "4px 0", marginBottom: 10,
         }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(255,255,255,0.2)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, flexShrink: 0 }}>D</div>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>던프</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>시세 알림 & 아이템 검색</div>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--color-primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, flexShrink: 0 }}>D</div>
+          <div style={{ textAlign: "left" }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>던프</div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)" }}>시세 알림 & 아이템 검색</div>
           </div>
         </Link>
 
-        {/* 2행: 탭들 + 검색 — 같은 줄 */}
+        {/* 2행: 탭들 + 검색 (검색은 오른쪽 끝) */}
         <nav style={{
           display: "flex", alignItems: "center", gap: 4,
           overflowX: "auto",
@@ -251,8 +253,6 @@ export default function Nav() {
               {t.label}
             </Link>
           ))}
-          {/* 구분선 + 검색 */}
-          <div style={{ width: 1, height: 20, background: "var(--border-color)", margin: "0 4px", flexShrink: 0 }} />
           <NavSearch onNavigate={handleNavigate} />
         </nav>
       </div>
