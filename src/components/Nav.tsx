@@ -227,7 +227,6 @@ export default function Nav() {
           gap: 10, textDecoration: "none",
           padding: "4px 0", marginBottom: 10,
         }}>
-          // 변경
           <svg width="32" height="32" viewBox="0 0 32 32">
             <rect width="32" height="32" rx="7" fill="var(--color-primary)"/>
             <rect x="6" y="7" width="12" height="7" rx="2" fill="white"/>
