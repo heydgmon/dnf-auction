@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "던전앤파이터 경매장에서 최근 거래 완료된 아이템의 실제 거래 가격을 확인하세요. 일별 시세 차트와 거래량 추이로 적정 매매 가격을 판단할 수 있습니다.",
 };
 
-export default function SoldPage() {
+export default function SoldPage({ searchParams }: { searchParams: { q?: string } }) {
   return (
     <>
       <section style={{ marginBottom: 16 }}>
@@ -15,7 +15,7 @@ export default function SoldPage() {
           최근 거래 완료된 아이템의 실제 거래 가격을 확인합니다. 일별 평균가 차트와 거래량 추이를 통해 아이템의 시세 흐름을 파악하고, 적정 매매 가격을 판단할 수 있습니다.
         </p>
       </section>
-      <SoldClient />
+      <SoldClient initialQuery={searchParams?.q || ""} />
     </>
   );
 }

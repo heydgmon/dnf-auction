@@ -52,7 +52,7 @@ function Sparkline({
   const range = max - min || 1;
   const padX = 4;
   const padTop = 4;
-  const padBot = 14; // 날짜 라벨 공간
+  const padBot = 14;
   const chartH = height - padTop - padBot;
 
   const pts = prices.map((v, i) => {
@@ -65,7 +65,6 @@ function Sparkline({
   const polygon = `${padX},${padTop + chartH} ${polyline} ${pts[pts.length - 1].x.toFixed(1)},${padTop + chartH}`;
   const gid = `sp-${color.replace(/[^a-z0-9]/gi, "")}-${width}`;
 
-  // 날짜 라벨: 첫날, 마지막날
   const firstDate = trades[0].date.slice(5);
   const lastDate = trades[trades.length - 1].date.slice(5);
 
@@ -79,11 +78,9 @@ function Sparkline({
       </defs>
       <polygon points={polygon} fill={`url(#${gid})`} />
       <polyline points={polyline} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      {/* 각 포인트 */}
       {pts.map((p, i) => (
         <circle key={i} cx={p.x} cy={p.y} r={i === pts.length - 1 ? 3 : 1.5} fill={i === pts.length - 1 ? color : "transparent"} stroke={color} strokeWidth={i === pts.length - 1 ? 0 : 0.8} />
       ))}
-      {/* 날짜 라벨 */}
       <text x={padX} y={height - 2} fontSize="8" fill="var(--text-muted)" textAnchor="start">{firstDate}</text>
       <text x={width - padX} y={height - 2} fontSize="8" fill="var(--text-muted)" textAnchor="end">{lastDate}</text>
     </svg>
@@ -141,7 +138,6 @@ function ItemCard({
   onSearch: (name: string) => void;
 }) {
   const trades = item.trades || [];
-  const prices = trades.map((t: any) => t.unitPrice);
   const isUp = item.priceChange > 0;
   const isFlat = item.priceChange === 0;
   const changeColor = isFlat ? "var(--text-muted)" : isUp ? "#DC2626" : "#2563EB";
@@ -159,7 +155,6 @@ function ItemCard({
       onMouseOver={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.06)"; }}
       onMouseOut={e => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
     >
-      {/* 상단: 아이템 정보 */}
       <div style={{ padding: "12px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{
           width: 22, height: 22, borderRadius: 6,
@@ -187,12 +182,10 @@ function ItemCard({
         </div>
       </div>
 
-      {/* 차트 영역 (항상 보임) */}
       <div style={{ padding: "6px 10px 0" }}>
         <Sparkline trades={trades} width={280} height={52} color={color} />
       </div>
 
-      {/* 하단: 통계 */}
       <div style={{ padding: "8px 14px 12px", display: "flex", gap: 6 }}>
         {[
           { label: "평균", value: formatGold(item.avgPrice), c: "var(--text-primary)" },
@@ -210,7 +203,7 @@ function ItemCard({
   );
 }
 
-/* ═══ 리스트 뷰 행 (컴팩트 테이블 모드) ═══ */
+/* ═══ 리스트 뷰 행 ═══ */
 function ItemRow({
   item,
   index,
@@ -268,7 +261,7 @@ function ItemRow({
   );
 }
 
-/* ═══ 대시보드 (카드 뷰 + 리스트 뷰 전환) ═══ */
+/* ═══ 대시보드 ═══ */
 function OverviewDashboard({
   items,
   onItemClick,
@@ -286,9 +279,7 @@ function OverviewDashboard({
 
   return (
     <div>
-      {/* 컨트롤 바 */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        {/* 정렬 */}
         <div style={{ display: "flex", gap: 4 }}>
           {([
             { key: "volume", label: "거래 규모순" },
@@ -310,7 +301,6 @@ function OverviewDashboard({
           ))}
         </div>
 
-        {/* 뷰 모드 */}
         <div style={{ display: "flex", gap: 2, background: "var(--bg-primary)", borderRadius: 6, padding: 2 }}>
           {([
             { key: "card", label: "카드" },
@@ -333,7 +323,6 @@ function OverviewDashboard({
         </div>
       </div>
 
-      {/* ── 카드 뷰: 그리드로 차트 항상 노출 ── */}
       {viewMode === "card" && (
         <div style={{
           display: "grid",
@@ -348,10 +337,8 @@ function OverviewDashboard({
         </div>
       )}
 
-      {/* ── 리스트 뷰: 컴팩트 테이블 ── */}
       {viewMode === "list" && (
         <div>
-          {/* 헤더 */}
           <div style={{
             display: "grid",
             gridTemplateColumns: "26px 1fr 80px 70px 58px",
@@ -466,8 +453,8 @@ function SearchChart({ chartData }: { chartData: { date: string; avg: number; co
 }
 
 /* ═══ 메인 컴포넌트 ═══ */
-export default function SoldClient() {
-  const [query, setQuery] = useState("");
+export default function SoldClient({ initialQuery = "" }: { initialQuery?: string }) {
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<AuctionSoldItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [chartLoading, setChartLoading] = useState(false);
@@ -478,6 +465,7 @@ export default function SoldClient() {
   const [chartData, setChartData] = useState<{ date: string; avg: number; count: number }[]>([]);
   const [chartMode, setChartMode] = useState<"overview" | "search">("overview");
   const [chartTitle, setChartTitle] = useState("");
+  const initialSearchDone = useRef(false);
 
   useEffect(() => {
     fetch("/api/market-insight").then(r => r.json()).then(d => setInsightItems(d.items || [])).catch(() => {});
@@ -515,6 +503,29 @@ export default function SoldClient() {
     } finally { setLoading(false); }
   }, [query, fetchHistory]);
 
+  // ── initialQuery가 있으면 자동 검색 ──
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim() && !initialSearchDone.current) {
+      initialSearchDone.current = true;
+      // query는 이미 initialQuery로 세팅되어 있으므로 search 호출
+      const doSearch = async () => {
+        setLoading(true); setChartLoading(true); setError(""); setSearched(true);
+        addRecent(initialQuery.trim());
+        try {
+          const recentRows = await fetchHistory(initialQuery.trim());
+          const filtered = (filterByItemName(recentRows, initialQuery.trim()) as AuctionSoldItem[]);
+          filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
+          setResults(filtered);
+          if (filtered.length === 0 && recentRows.length === 0) setError("거래 내역이 없습니다.");
+        } catch {
+          setError("서버 연결에 실패했습니다.");
+          setResults([]); setChartMode("overview"); setChartTitle("");
+        } finally { setLoading(false); }
+      };
+      doSearch();
+    }
+  }, [initialQuery, fetchHistory]);
+
   useEffect(() => {
     if (!query.trim() && searched) {
       setSearched(false); setResults([]); setChartMode("overview"); setChartTitle(""); setChartData([]);
@@ -550,7 +561,6 @@ export default function SoldClient() {
       {/* ═══ 검색 시: 단일 아이템 차트 ═══ */}
       {chartMode === "search" && (
         <Card>
-          {/* 돌아가기 버튼 */}
           <button
             onClick={() => { setChartMode("overview"); setChartTitle(""); setChartData([]); setSearched(false); setResults([]); setQuery(""); }}
             style={{
