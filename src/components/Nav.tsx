@@ -54,6 +54,41 @@ function NavItemImg({ itemId, itemName, rarity, size = 24 }: { itemId: string; i
   );
 }
 
+/* ── extractRows: 다양한 API 응답 형식에서 배열 추출 ── */
+function extractRows(json: any): any[] {
+  if (!json) return [];
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json.rows)) return json.rows;
+  if (Array.isArray(json.items)) return json.items;
+  if (typeof json === "object") {
+    for (const k of Object.keys(json)) { if (Array.isArray(json[k])) return json[k]; }
+  }
+  return [];
+}
+
+/* ── filterByItemName: 클라이언트 측 유연한 이름 매칭 ── */
+function filterByItemName<T extends { itemName?: string }>(rows: T[], query: string): T[] {
+  const q = query.trim();
+  if (!q) return rows;
+  const qLower = q.toLowerCase();
+  const qWords = qLower.split(/\s+/).filter(Boolean);
+
+  // 1) 정확히 일치
+  const exact = rows.filter(r => r.itemName === q);
+  if (exact.length > 0) return exact;
+
+  // 2) 포함
+  const contains = rows.filter(r => r.itemName && r.itemName.toLowerCase().includes(qLower));
+  if (contains.length > 0) return contains;
+
+  // 3) 단어 모두 포함
+  return rows.filter(r => {
+    if (!r.itemName) return false;
+    const name = r.itemName.toLowerCase();
+    return qWords.every(w => name.includes(w));
+  });
+}
+
 function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -76,20 +111,23 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
     const ctrl = new AbortController();
     const timer = setTimeout(async () => {
       try {
+        // ── 핵심 수정: shared.tsx의 AutocompleteSearch와 동일한 패턴 사용 ──
         const res = await fetch(
-          `/api/auction?itemName=${encodeURIComponent(t)}&wordType=full&limit=400`,
+          `/api/auction?itemName=${encodeURIComponent(t)}&wordType=full&limit=400&sort[unitPrice]=asc`,
           { signal: ctrl.signal }
         );
         if (!res.ok) { setSuggestions([]); setShowDrop(false); return; }
+
+        // extractRows로 다양한 응답 형식 대응
         const data = await res.json();
-        const rows: any[] = data.rows || [];
-        // ── 변경: 클라이언트 필터(includes) 제거 ──
-        // API가 wordType=full로 이미 포함 검색을 해서 반환하므로
-        // 여기서 다시 includes 체크할 필요 없음.
-        // 기존 코드는 n.toLowerCase().includes(tLower) 필터가 있어서
-        // API 응답에 검색어가 대소문자/인코딩 차이로 누락되는 경우가 있었음.
+        const rows = extractRows(data);
+
+        // filterByItemName으로 클라이언트 측 필터링 (shared.tsx와 동일)
+        const matched = filterByItemName(rows, t);
+
+        // 아이템 이름별 중복 제거 (최저가 유지)
         const nameMap = new Map<string, any>();
-        for (const r of rows) {
+        for (const r of matched) {
           const n = r.itemName || "";
           if (!n) continue;
           if (!nameMap.has(n)) {
@@ -99,14 +137,14 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
             if ((r.unitPrice || Infinity) < (existing.unitPrice || Infinity)) nameMap.set(n, r);
           }
         }
-        const uniq = [...nameMap.values()].sort((a, b) => (a.unitPrice || 0) - (b.unitPrice || 0));
+        const uniq = [...nameMap.values()].sort((a: any, b: any) => (a.unitPrice || 0) - (b.unitPrice || 0));
         const result = uniq.slice(0, 8);
         setSuggestions(result);
         setShowDrop(result.length > 0);
       } catch (e: any) {
         if (e.name !== "AbortError") { setSuggestions([]); setShowDrop(false); }
       }
-    }, 350);
+    }, 400); // shared.tsx와 동일한 400ms 디바운스
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [query]);
 
@@ -198,7 +236,7 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
                 </div>
                 {item.unitPrice !== undefined && (
                   <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", flexShrink: 0 }}>
-                    {item.unitPrice.toLocaleString()}G
+                    최저 {item.unitPrice.toLocaleString()}G
                   </span>
                 )}
               </div>
@@ -221,7 +259,6 @@ export default function Nav() {
   return (
     <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px" }}>
-        {/* ── 변경: 로고 왼쪽 정렬 (기존 중앙 정렬 → justifyContent 제거) ── */}
         <Link href="/" style={{
           display: "flex", alignItems: "center",
           gap: 10, textDecoration: "none",
@@ -230,7 +267,7 @@ export default function Nav() {
           <svg width="32" height="32" viewBox="0 0 32 32">
             <rect width="32" height="32" rx="7" fill="var(--color-primary)"/>
             <rect x="6" y="7" width="12" height="7" rx="2" fill="white"/>
-            <line x1="18" y1="11" x2="26" y2="26" stroke="white" stroke-width="4" stroke-linecap="round"/>
+            <line x1="18" y1="11" x2="26" y2="26" stroke="white" strokeWidth="4" strokeLinecap="round"/>
             <rect x="21" y="23" width="7" height="4" rx="1.5" fill="white" opacity="0.85"/>
           </svg>
           <div style={{ textAlign: "left" }}>
