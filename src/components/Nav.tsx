@@ -54,7 +54,6 @@ function NavItemImg({ itemId, itemName, rarity, size = 24 }: { itemId: string; i
   );
 }
 
-/* ── extractRows: 다양한 API 응답 형식에서 배열 추출 ── */
 function extractRows(json: any): any[] {
   if (!json) return [];
   if (Array.isArray(json)) return json;
@@ -66,22 +65,15 @@ function extractRows(json: any): any[] {
   return [];
 }
 
-/* ── filterByItemName: 클라이언트 측 유연한 이름 매칭 ── */
 function filterByItemName<T extends { itemName?: string }>(rows: T[], query: string): T[] {
   const q = query.trim();
   if (!q) return rows;
   const qLower = q.toLowerCase();
   const qWords = qLower.split(/\s+/).filter(Boolean);
-
-  // 1) 정확히 일치
   const exact = rows.filter(r => r.itemName === q);
   if (exact.length > 0) return exact;
-
-  // 2) 포함
   const contains = rows.filter(r => r.itemName && r.itemName.toLowerCase().includes(qLower));
   if (contains.length > 0) return contains;
-
-  // 3) 단어 모두 포함
   return rows.filter(r => {
     if (!r.itemName) return false;
     const name = r.itemName.toLowerCase();
@@ -111,21 +103,14 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
     const ctrl = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        // ── 핵심 수정: shared.tsx의 AutocompleteSearch와 동일한 패턴 사용 ──
         const res = await fetch(
           `/api/auction?itemName=${encodeURIComponent(t)}&wordType=full&limit=400&sort[unitPrice]=asc`,
           { signal: ctrl.signal }
         );
         if (!res.ok) { setSuggestions([]); setShowDrop(false); return; }
-
-        // extractRows로 다양한 응답 형식 대응
         const data = await res.json();
         const rows = extractRows(data);
-
-        // filterByItemName으로 클라이언트 측 필터링 (shared.tsx와 동일)
         const matched = filterByItemName(rows, t);
-
-        // 아이템 이름별 중복 제거 (최저가 유지)
         const nameMap = new Map<string, any>();
         for (const r of matched) {
           const n = r.itemName || "";
@@ -144,7 +129,7 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
       } catch (e: any) {
         if (e.name !== "AbortError") { setSuggestions([]); setShowDrop(false); }
       }
-    }, 400); // shared.tsx와 동일한 400ms 디바운스
+    }, 400);
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [query]);
 
@@ -164,7 +149,7 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
   };
 
   return (
-    <div ref={wrapRef} style={{ position: "relative", flexShrink: 0, marginLeft: "auto" }}>
+    <div ref={wrapRef} style={{ position: "relative", flexShrink: 0 }}>
       <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
         <input
           type="text"
@@ -276,31 +261,38 @@ export default function Nav() {
           </div>
         </Link>
 
-        {/* 탭들 + 검색 */}
-        <nav style={{
-          display: "flex", alignItems: "center", gap: 4,
-          overflowX: "auto",
-          scrollbarWidth: "none",
-        }}>
-          {NAV_ITEMS.map((t) => (
-            <Link
-              key={t.href}
-              href={t.href}
-              className={`nav-tab ${pathname === t.href ? "active" : ""}`}
-              style={{
-                textDecoration: "none",
-                flexShrink: 0,
-                ...(t.href === "/guide" && pathname !== t.href ? {
-                  color: "var(--color-accent)",
-                  border: "1px solid var(--color-accent-light)",
-                } : {}),
-              }}
-            >
-              {t.label}
-            </Link>
-          ))}
+        {/* ══ 핵심 수정 ══
+            기존: NavSearch가 <nav overflowX="auto"> 안에 있어서
+                  드롭다운이 overflow에 의해 잘려서 보이지 않았음.
+            수정: nav(탭)과 NavSearch를 같은 레벨의 flex 컨테이너로 분리.
+                  nav에만 overflowX:auto 적용, NavSearch는 바깥에 배치. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <nav style={{
+            display: "flex", alignItems: "center", gap: 4,
+            flex: 1, minWidth: 0,
+            overflowX: "auto",
+            scrollbarWidth: "none",
+          }}>
+            {NAV_ITEMS.map((t) => (
+              <Link
+                key={t.href}
+                href={t.href}
+                className={`nav-tab ${pathname === t.href ? "active" : ""}`}
+                style={{
+                  textDecoration: "none",
+                  flexShrink: 0,
+                  ...(t.href === "/guide" && pathname !== t.href ? {
+                    color: "var(--color-accent)",
+                    border: "1px solid var(--color-accent-light)",
+                  } : {}),
+                }}
+              >
+                {t.label}
+              </Link>
+            ))}
+          </nav>
           <NavSearch onNavigate={handleNavigate} />
-        </nav>
+        </div>
       </div>
     </header>
   );
