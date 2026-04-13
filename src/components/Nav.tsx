@@ -261,11 +261,7 @@ export default function Nav() {
           </div>
         </Link>
 
-        {/* ══ 핵심 수정 ══
-            기존: NavSearch가 <nav overflowX="auto"> 안에 있어서
-                  드롭다운이 overflow에 의해 잘려서 보이지 않았음.
-            수정: nav(탭)과 NavSearch를 같은 레벨의 flex 컨테이너로 분리.
-                  nav에만 overflowX:auto 적용, NavSearch는 바깥에 배치. */}
+        {/* nav(overflowX:auto)와 NavSearch를 분리하여 드롭다운이 잘리지 않도록 함 */}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <nav style={{
             display: "flex", alignItems: "center", gap: 4,

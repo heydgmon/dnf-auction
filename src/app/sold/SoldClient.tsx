@@ -465,7 +465,7 @@ export default function SoldClient({ initialQuery = "" }: { initialQuery?: strin
   const [chartData, setChartData] = useState<{ date: string; avg: number; count: number }[]>([]);
   const [chartMode, setChartMode] = useState<"overview" | "search">("overview");
   const [chartTitle, setChartTitle] = useState("");
-  const initialSearchDone = useRef(false);
+  const lastSearchedQuery = useRef("");
 
   useEffect(() => {
     fetch("/api/market-insight").then(r => r.json()).then(d => setInsightItems(d.items || [])).catch(() => {});
@@ -487,13 +487,17 @@ export default function SoldClient({ initialQuery = "" }: { initialQuery?: strin
     finally { setChartLoading(false); }
   }, []);
 
-  const search = useCallback(async () => {
-    if (!query.trim()) return;
+  /* ── 검색 실행 함수 (공통) ── */
+  const doSearch = useCallback(async (searchQuery: string) => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
     setLoading(true); setChartLoading(true); setError(""); setSearched(true);
-    addRecent(query.trim());
+    setQuery(trimmed);
+    addRecent(trimmed);
+    lastSearchedQuery.current = trimmed;
     try {
-      const recentRows = await fetchHistory(query.trim());
-      const filtered = (filterByItemName(recentRows, query.trim()) as AuctionSoldItem[]);
+      const recentRows = await fetchHistory(trimmed);
+      const filtered = (filterByItemName(recentRows, trimmed) as AuctionSoldItem[]);
       filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
       setResults(filtered);
       if (filtered.length === 0 && recentRows.length === 0) setError("거래 내역이 없습니다.");
@@ -501,30 +505,22 @@ export default function SoldClient({ initialQuery = "" }: { initialQuery?: strin
       setError("서버 연결에 실패했습니다.");
       setResults([]); setChartMode("overview"); setChartTitle("");
     } finally { setLoading(false); }
-  }, [query, fetchHistory]);
+  }, [fetchHistory]);
 
-  // ── initialQuery가 있으면 자동 검색 ──
+  const search = useCallback(async () => {
+    await doSearch(query);
+  }, [query, doSearch]);
+
+  /* ── 핵심 수정: initialQuery prop 변경 감지 ──
+     Nav에서 다른 아이템을 클릭하면 URL이 /sold?q=새아이템 으로 바뀌고,
+     Next.js가 새 searchParams를 전달하지만 컴포넌트가 리마운트되지 않음.
+     따라서 initialQuery 변경을 감지하여 새 검색을 실행해야 함. */
   useEffect(() => {
-    if (initialQuery && initialQuery.trim() && !initialSearchDone.current) {
-      initialSearchDone.current = true;
-      // query는 이미 initialQuery로 세팅되어 있으므로 search 호출
-      const doSearch = async () => {
-        setLoading(true); setChartLoading(true); setError(""); setSearched(true);
-        addRecent(initialQuery.trim());
-        try {
-          const recentRows = await fetchHistory(initialQuery.trim());
-          const filtered = (filterByItemName(recentRows, initialQuery.trim()) as AuctionSoldItem[]);
-          filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
-          setResults(filtered);
-          if (filtered.length === 0 && recentRows.length === 0) setError("거래 내역이 없습니다.");
-        } catch {
-          setError("서버 연결에 실패했습니다.");
-          setResults([]); setChartMode("overview"); setChartTitle("");
-        } finally { setLoading(false); }
-      };
-      doSearch();
+    const trimmed = (initialQuery || "").trim();
+    if (trimmed && trimmed !== lastSearchedQuery.current) {
+      doSearch(trimmed);
     }
-  }, [initialQuery, fetchHistory]);
+  }, [initialQuery, doSearch]);
 
   useEffect(() => {
     if (!query.trim() && searched) {
@@ -533,17 +529,8 @@ export default function SoldClient({ initialQuery = "" }: { initialQuery?: strin
   }, [query]);
 
   const handleItemClick = useCallback(async (name: string) => {
-    setQuery(name); setSearched(true); setLoading(true); setChartLoading(true); setError("");
-    addRecent(name);
-    try {
-      const recentRows = await fetchHistory(name);
-      const filtered = (filterByItemName(recentRows, name) as AuctionSoldItem[]);
-      filtered.sort((a, b) => (b.soldDate || "").localeCompare(a.soldDate || ""));
-      setResults(filtered);
-      if (filtered.length === 0 && recentRows.length === 0) setError("거래 내역이 없습니다.");
-    } catch { setError("서버 연결에 실패했습니다."); setResults([]); }
-    finally { setLoading(false); }
-  }, [fetchHistory]);
+    await doSearch(name);
+  }, [doSearch]);
 
   return (
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -562,7 +549,7 @@ export default function SoldClient({ initialQuery = "" }: { initialQuery?: strin
       {chartMode === "search" && (
         <Card>
           <button
-            onClick={() => { setChartMode("overview"); setChartTitle(""); setChartData([]); setSearched(false); setResults([]); setQuery(""); }}
+            onClick={() => { setChartMode("overview"); setChartTitle(""); setChartData([]); setSearched(false); setResults([]); setQuery(""); lastSearchedQuery.current = ""; }}
             style={{
               width: "100%", padding: "10px 0", marginBottom: 14,
               borderRadius: 8, border: "1.5px solid var(--color-primary)",
