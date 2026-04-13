@@ -83,11 +83,15 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
         if (!res.ok) { setSuggestions([]); setShowDrop(false); return; }
         const data = await res.json();
         const rows: any[] = data.rows || [];
-        const tLower = t.toLowerCase();
+        // ── 변경: 클라이언트 필터(includes) 제거 ──
+        // API가 wordType=full로 이미 포함 검색을 해서 반환하므로
+        // 여기서 다시 includes 체크할 필요 없음.
+        // 기존 코드는 n.toLowerCase().includes(tLower) 필터가 있어서
+        // API 응답에 검색어가 대소문자/인코딩 차이로 누락되는 경우가 있었음.
         const nameMap = new Map<string, any>();
         for (const r of rows) {
           const n = r.itemName || "";
-          if (!n || !n.toLowerCase().includes(tLower)) continue;
+          if (!n) continue;
           if (!nameMap.has(n)) {
             nameMap.set(n, r);
           } else {
@@ -217,9 +221,9 @@ export default function Nav() {
   return (
     <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px" }}>
-        {/* 1행: 로고 — 중앙 정렬, 배경 없음 */}
+        {/* ── 변경: 로고 왼쪽 정렬 (기존 중앙 정렬 → justifyContent 제거) ── */}
         <Link href="/" style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
+          display: "flex", alignItems: "center",
           gap: 10, textDecoration: "none",
           padding: "4px 0", marginBottom: 10,
         }}>
@@ -230,7 +234,7 @@ export default function Nav() {
           </div>
         </Link>
 
-        {/* 2행: 탭들 + 검색 (검색은 오른쪽 끝) */}
+        {/* 탭들 + 검색 */}
         <nav style={{
           display: "flex", alignItems: "center", gap: 4,
           overflowX: "auto",
