@@ -21,11 +21,10 @@ interface ChartRow {
   max?: number;
 }
 
-// ── 인메모리 클라이언트 캐시 (탭 전환 시 즉시 표시) ──
 let clientCache: { items: TrendingItem[]; fetchedAt: number } | null = null;
-const CLIENT_CACHE_TTL = 3 * 60 * 1000; // 3분
+const CLIENT_CACHE_TTL = 3 * 60 * 1000;
 
-/* ═══ 미니 차트 (SVG 스파크라인) ═══ */
+/* ═══ SVG 스파크라인 ═══ */
 function MiniChart({ data, color, height = 60 }: { data: ChartRow[]; color: string; height?: number }) {
   if (data.length < 2) {
     return (
@@ -38,7 +37,7 @@ function MiniChart({ data, color, height = 60 }: { data: ChartRow[]; color: stri
   const min = Math.min(...prices);
   const max = Math.max(...prices);
   const range = max - min || 1;
-  const w = 300;
+  const w = 400;
   const padX = 6;
   const padTop = 6;
   const padBot = 16;
@@ -76,7 +75,7 @@ function MiniChart({ data, color, height = 60 }: { data: ChartRow[]; color: stri
   );
 }
 
-/* ═══ 아이템 상세 패널 ═══ */
+/* ═══ 아이템 상세 패널 (전체 너비) ═══ */
 function ItemDetailPanel({ item, onClose }: { item: TrendingItem; onClose: () => void }) {
   const [chartData, setChartData] = useState<ChartRow[]>([]);
   const [recentRows, setRecentRows] = useState<any[]>([]);
@@ -106,74 +105,74 @@ function ItemDetailPanel({ item, onClose }: { item: TrendingItem; onClose: () =>
       background: "var(--bg-card)",
       border: "1px solid var(--color-primary)",
       borderRadius: 14,
-      padding: "18px 18px 14px",
-      marginTop: 8,
+      padding: "18px",
       boxShadow: "0 4px 20px rgba(37,99,235,0.08)",
     }}>
       {/* 헤더 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-        <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={40} />
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={44} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: getRarityColor(item.itemRarity), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{item.itemType} · {item.itemRarity}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: getRarityColor(item.itemRarity) }}>{item.itemName}</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{item.itemType} · {item.itemRarity} · 등록 {item.auctionCount}건+</div>
         </div>
-        <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)", color: "var(--text-muted)", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>✕</button>
+        <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)", color: "var(--text-muted)", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>✕</button>
       </div>
 
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div className="skeleton" style={{ height: 70, borderRadius: 8 }} />
+          <div className="skeleton" style={{ height: 80, borderRadius: 8 }} />
           <div className="skeleton" style={{ height: 40, borderRadius: 8 }} />
         </div>
       ) : (
         <>
-          {/* 차트 */}
-          {chartData.length >= 2 ? (
-            <div style={{ background: "var(--bg-primary)", borderRadius: 10, padding: "10px 8px 4px", marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4, paddingLeft: 4 }}>
+          {/* 차트 + 통계 가로 배치 */}
+          <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+            {/* 차트 */}
+            <div style={{ flex: "1 1 300px", minWidth: 0, background: "var(--bg-primary)", borderRadius: 10, padding: "12px 10px 6px" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, paddingLeft: 4 }}>
                 시세 추이 ({chartData.length}일)
               </div>
-              <MiniChart data={chartData} color={chartColor} height={64} />
+              {chartData.length >= 2 ? (
+                <MiniChart data={chartData} color={chartColor} height={72} />
+              ) : (
+                <div style={{ height: 72, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--text-muted)" }}>데이터 부족</div>
+              )}
             </div>
-          ) : (
-            <div style={{ background: "var(--bg-primary)", borderRadius: 10, padding: "16px", marginBottom: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>시세 추이 데이터가 부족합니다</div>
-            </div>
-          )}
 
-          {/* 통계 카드 */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 12 }}>
-            <div style={{ background: "var(--bg-primary)", borderRadius: 8, padding: "8px 10px" }}>
-              <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2 }}>최근 평균가</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{latestPrice > 0 ? formatGold(latestPrice) : "—"}</div>
-            </div>
-            <div style={{ background: "var(--bg-primary)", borderRadius: 8, padding: "8px 10px" }}>
-              <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2 }}>변동률</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: chartColor }}>
-                {latestPrice > 0 ? `${isUp ? "+" : ""}${change}%` : "—"}
+            {/* 통계 */}
+            <div style={{ flex: "0 0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, alignContent: "start" }}>
+              <div style={{ background: "var(--bg-primary)", borderRadius: 8, padding: "10px 14px", minWidth: 100 }}>
+                <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 3 }}>최근 평균가</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{latestPrice > 0 ? formatGold(latestPrice) : "—"}</div>
               </div>
-            </div>
-            <div style={{ background: "var(--bg-primary)", borderRadius: 8, padding: "8px 10px" }}>
-              <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2 }}>거래 건수</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-secondary)" }}>
-                {chartData.reduce((s, d) => s + d.count, 0)}건
+              <div style={{ background: "var(--bg-primary)", borderRadius: 8, padding: "10px 14px", minWidth: 100 }}>
+                <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 3 }}>변동률</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: chartColor }}>
+                  {latestPrice > 0 ? `${isUp ? "+" : ""}${change}%` : "—"}
+                </div>
+              </div>
+              <div style={{ background: "var(--bg-primary)", borderRadius: 8, padding: "10px 14px", gridColumn: "span 2" }}>
+                <div style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 3 }}>거래 건수</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-secondary)" }}>
+                  {chartData.reduce((s, d) => s + d.count, 0)}건
+                </div>
               </div>
             </div>
           </div>
 
           {/* 최근 거래 내역 */}
           {recentRows.length > 0 && (
-            <div>
+            <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>최근 거래 내역</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 {recentRows.map((r: any, i: number) => (
                   <div key={i} style={{
                     display: "flex", alignItems: "center", gap: 8,
-                    padding: "5px 8px", borderRadius: 6,
+                    padding: "5px 10px", borderRadius: 6,
                     background: i % 2 === 0 ? "var(--bg-primary)" : "transparent",
-                    fontSize: 11,
+                    fontSize: 12,
                   }}>
-                    <span style={{ color: "var(--text-muted)", width: 70, flexShrink: 0 }}>
+                    <span style={{ color: "var(--text-muted)", width: 80, flexShrink: 0, fontSize: 11 }}>
                       {(r.soldDate || "").slice(5, 16)}
                     </span>
                     <span style={{ flex: 1, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -188,16 +187,15 @@ function ItemDetailPanel({ item, onClose }: { item: TrendingItem; onClose: () =>
             </div>
           )}
 
-          {/* 더 보기 버튼 */}
+          {/* 더 보기 */}
           <a
             href={`/sold?q=${encodeURIComponent(item.itemName)}`}
             style={{
-              display: "block", textAlign: "center", marginTop: 12,
-              padding: "9px 0", borderRadius: 8,
+              display: "block", textAlign: "center",
+              padding: "10px 0", borderRadius: 8,
               background: "var(--color-primary-light)", color: "var(--color-primary)",
               fontSize: 12, fontWeight: 600, textDecoration: "none",
               border: "1px solid var(--color-primary)",
-              transition: "all 0.15s",
             }}
           >
             시세 상세 보기 →
@@ -220,10 +218,8 @@ export default function HomeClient() {
       setLoading(false);
       return;
     }
-
     if (fetchedRef.current) return;
     fetchedRef.current = true;
-
     fetch("/api/trending")
       .then(r => r.json())
       .then(d => {
@@ -232,15 +228,17 @@ export default function HomeClient() {
         clientCache = { items: fetched, fetchedAt: Date.now() };
       })
       .catch(() => {})
-      .finally(() => {
-        setLoading(false);
-        fetchedRef.current = false;
-      });
+      .finally(() => { setLoading(false); fetchedRef.current = false; });
   }, []);
 
   const handleItemClick = useCallback((item: TrendingItem) => {
     setSelectedItem(prev => prev?.itemName === item.itemName ? null : item);
   }, []);
+
+  // TOP4 중 선택된 아이템이 있는지
+  const selectedInTop4 = selectedItem && items.slice(0, 4).some(it => it.itemName === selectedItem.itemName);
+  // 5~20위 중 선택된 아이템이 있는지
+  const selectedInRest = selectedItem && items.slice(4, 20).some(it => it.itemName === selectedItem.itemName);
 
   const medalColors = ["#FFD700", "#C0C0C0", "#CD7F32", "#4A90D9"];
 
@@ -251,42 +249,45 @@ export default function HomeClient() {
         <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>현재 경매장에 등록된 매물이 많은 순서입니다. 클릭하면 시세를 확인할 수 있습니다.</p>
         {loading && <SkeletonList count={8} />}
         {!loading && items.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10, marginBottom: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+            {/* ═══ TOP 4 카드 그리드 ═══ */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
               {items.slice(0, 4).map((item, i) => (
-                <div key={item.itemName}>
-                  <div
-                    className="card"
-                    onClick={() => handleItemClick(item)}
-                    style={{
-                      padding: 0, overflow: "hidden",
-                      border: selectedItem?.itemName === item.itemName
-                        ? `2px solid var(--color-primary)`
-                        : `2px solid ${medalColors[i]}30`,
-                      position: "relative", cursor: "pointer",
-                      transition: "border-color 0.15s, box-shadow 0.15s",
-                    }}
-                  >
-                    <div style={{ position: "absolute", top: 0, left: 0, width: 36, height: 36, background: medalColors[i], borderRadius: "0 0 12px 0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, color: i === 0 ? "#92400E" : "#fff" }}>{i + 1}</div>
-                    <div style={{ padding: "20px 16px 16px", textAlign: "center" }}>
-                      <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={48} />
-                      <div style={{ fontSize: 14, fontWeight: 700, color: getRarityColor(item.itemRarity), marginTop: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{item.itemType}</div>
-                      <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 10 }}>
-                        <div>
-                          <div style={{ fontSize: 10, color: "var(--text-muted)" }}>등록 매물</div>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--color-primary)" }}>{item.auctionCount}건+</div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 10, color: "var(--color-primary)", marginTop: 8, opacity: 0.7 }}>클릭하여 시세 확인</div>
+                <div
+                  key={item.itemName}
+                  className="card"
+                  onClick={() => handleItemClick(item)}
+                  style={{
+                    padding: 0, overflow: "hidden",
+                    border: selectedItem?.itemName === item.itemName
+                      ? `2px solid var(--color-primary)`
+                      : `2px solid ${medalColors[i]}30`,
+                    position: "relative", cursor: "pointer",
+                    transition: "border-color 0.15s, box-shadow 0.15s",
+                  }}
+                >
+                  <div style={{ position: "absolute", top: 0, left: 0, width: 36, height: 36, background: medalColors[i], borderRadius: "0 0 12px 0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, color: i === 0 ? "#92400E" : "#fff" }}>{i + 1}</div>
+                  <div style={{ padding: "20px 16px 16px", textAlign: "center" }}>
+                    <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={48} />
+                    <div style={{ fontSize: 14, fontWeight: 700, color: getRarityColor(item.itemRarity), marginTop: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{item.itemType}</div>
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)" }}>등록 매물</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--color-primary)" }}>{item.auctionCount}건+</div>
                     </div>
+                    <div style={{ fontSize: 10, color: "var(--color-primary)", marginTop: 8, opacity: 0.7 }}>클릭하여 시세 확인</div>
                   </div>
-                  {selectedItem?.itemName === item.itemName && (
-                    <ItemDetailPanel item={item} onClose={() => setSelectedItem(null)} />
-                  )}
                 </div>
               ))}
             </div>
+
+            {/* ═══ TOP4 상세 패널: 그리드 바깥, 전체 너비 ═══ */}
+            {selectedInTop4 && selectedItem && (
+              <ItemDetailPanel item={selectedItem} onClose={() => setSelectedItem(null)} />
+            )}
+
+            {/* ═══ 5~20위 리스트 ═══ */}
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {items.slice(4, 20).map((item, i) => (
                 <div key={item.itemName}>
@@ -311,8 +312,11 @@ export default function HomeClient() {
                       <div style={{ fontSize: 10, color: "var(--text-muted)" }}>등록 매물</div>
                     </div>
                   </div>
+                  {/* 5~20위는 해당 행 바로 아래에 표시 */}
                   {selectedItem?.itemName === item.itemName && (
-                    <ItemDetailPanel item={item} onClose={() => setSelectedItem(null)} />
+                    <div style={{ marginTop: 6 }}>
+                      <ItemDetailPanel item={item} onClose={() => setSelectedItem(null)} />
+                    </div>
                   )}
                 </div>
               ))}
