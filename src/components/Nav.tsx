@@ -54,6 +54,7 @@ function NavItemImg({ itemId, itemName, rarity, size = 24 }: { itemId: string; i
   );
 }
 
+/* ══ 자동완성 검색 ══ */
 function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -137,6 +138,7 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
             background: "var(--bg-primary)",
             color: "var(--text-primary)",
             fontSize: 12,
+            transition: "border-color 0.15s",
           }}
         />
         <button
@@ -156,7 +158,7 @@ function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
       {showDrop && suggestions.length > 0 && (
         <div style={{
           position: "absolute", top: "100%", right: 0,
-          marginTop: 4, zIndex: 100, minWidth: 300,
+          marginTop: 4, zIndex: 100, minWidth: 280,
           background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
           borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
           maxHeight: 340, overflowY: "auto",
@@ -214,25 +216,23 @@ export default function Nav() {
 
   return (
     <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px" }}>
-        {/* 1행: 로고 — 전체 너비 */}
-        <Link href="/" style={{
-          display: "flex", alignItems: "center", gap: 12, textDecoration: "none",
-          padding: "8px 16px", marginBottom: 10,
-          background: "var(--color-primary)", borderRadius: 10,
-        }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(255,255,255,0.2)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, flexShrink: 0 }}>D</div>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>던프</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>시세 알림 & 아이템 검색</div>
+      {/* 상단: 로고 + 검색 */}
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--color-primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900 }}>D</div>
+          <div style={{ textAlign: "left" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>던프</div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)" }}>시세 알림 & 아이템 검색</div>
           </div>
         </Link>
+        <NavSearch onNavigate={handleNavigate} />
+      </div>
 
-        {/* 2행: 탭들 + 검색 — 같은 줄 */}
+      {/* 하단: 탭 (가로 스크롤) */}
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 16px 8px" }}>
         <nav style={{
-          display: "flex", alignItems: "center", gap: 4,
-          overflowX: "auto",
-          scrollbarWidth: "none",
+          display: "flex", gap: 4, overflowX: "auto",
+          scrollbarWidth: "none", msOverflowStyle: "none",
         }}>
           {NAV_ITEMS.map((t) => (
             <Link
@@ -251,9 +251,6 @@ export default function Nav() {
               {t.label}
             </Link>
           ))}
-          {/* 구분선 + 검색 */}
-          <div style={{ width: 1, height: 20, background: "var(--border-color)", margin: "0 4px", flexShrink: 0 }} />
-          <NavSearch onNavigate={handleNavigate} />
         </nav>
       </div>
     </header>
