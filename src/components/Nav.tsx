@@ -54,8 +54,7 @@ function NavItemImg({ itemId, itemName, rarity, size = 24 }: { itemId: string; i
   );
 }
 
-/* ══ 자동완성 검색 컴포넌트 (공통 로직) ══ */
-function useNavAutocomplete(onNavigate: (name: string) => void) {
+function NavSearch({ onNavigate }: { onNavigate: (name: string) => void }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showDrop, setShowDrop] = useState(false);
@@ -78,7 +77,7 @@ function useNavAutocomplete(onNavigate: (name: string) => void) {
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(
-          `/api/auction?itemName=${encodeURIComponent(t)}&wordType=full&limit=400&sort[unitPrice]=asc`,
+          `/api/auction?itemName=${encodeURIComponent(t)}&wordType=full&limit=400`,
           { signal: ctrl.signal }
         );
         if (!res.ok) { setSuggestions([]); setShowDrop(false); return; }
@@ -97,12 +96,13 @@ function useNavAutocomplete(onNavigate: (name: string) => void) {
           }
         }
         const uniq = [...nameMap.values()].sort((a, b) => (a.unitPrice || 0) - (b.unitPrice || 0));
-        setSuggestions(uniq.slice(0, 8));
-        setShowDrop(uniq.length > 0);
+        const result = uniq.slice(0, 8);
+        setSuggestions(result);
+        setShowDrop(result.length > 0);
       } catch (e: any) {
         if (e.name !== "AbortError") { setSuggestions([]); setShowDrop(false); }
       }
-    }, 400);
+    }, 350);
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [query]);
 
@@ -121,39 +121,31 @@ function useNavAutocomplete(onNavigate: (name: string) => void) {
     onNavigate(q);
   };
 
-  return { query, setQuery, suggestions, showDrop, setShowDrop, wrapRef, pick, handleSearch };
-}
-
-/* ══ 데스크톱 검색 ══ */
-function NavSearchDesktop({ onNavigate }: { onNavigate: (name: string) => void }) {
-  const { query, setQuery, suggestions, showDrop, wrapRef, pick, handleSearch } = useNavAutocomplete(onNavigate);
-
   return (
-    <div ref={wrapRef} style={{ position: "relative" }}>
+    <div ref={wrapRef} style={{ position: "relative", flexShrink: 0, marginLeft: "auto" }}>
       <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
         <input
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") handleSearch(); }}
-          onFocus={() => { if (suggestions.length > 0) (undefined as any)/* handled by hook */; }}
+          onFocus={() => { if (suggestions.length > 0) setShowDrop(true); }}
           placeholder="시세 검색"
           style={{
-            width: 150,
+            width: 130,
             padding: "6px 10px",
             borderRadius: 6,
             border: "1.5px solid var(--border-color)",
             background: "var(--bg-primary)",
             color: "var(--text-primary)",
             fontSize: 12,
-            transition: "border-color 0.15s",
           }}
         />
         <button
           onClick={handleSearch}
           disabled={!query.trim()}
           style={{
-            padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+            padding: "6px 14px", borderRadius: 6, fontSize: 11, fontWeight: 600,
             background: "var(--color-primary)", color: "#fff", border: "none",
             cursor: query.trim() ? "pointer" : "not-allowed",
             opacity: query.trim() ? 1 : 0.4, flexShrink: 0, whiteSpace: "nowrap",
@@ -165,11 +157,11 @@ function NavSearchDesktop({ onNavigate }: { onNavigate: (name: string) => void }
 
       {showDrop && suggestions.length > 0 && (
         <div style={{
-          position: "absolute", top: "100%", left: 0,
+          position: "absolute", top: "100%", right: 0,
           marginTop: 4, zIndex: 100, minWidth: 300,
           background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
           borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-          maxHeight: 340, overflowY: "auto",
+          maxHeight: 360, overflowY: "auto",
         }}>
           {suggestions.map((item: any, i: number) => {
             const name = item.itemName || "";
@@ -214,98 +206,9 @@ function NavSearchDesktop({ onNavigate }: { onNavigate: (name: string) => void }
   );
 }
 
-/* ══ 모바일 검색 ══ */
-function NavSearchMobile({ onNavigate }: { onNavigate: (name: string) => void }) {
-  const { query, setQuery, suggestions, showDrop, wrapRef, pick, handleSearch } = useNavAutocomplete(onNavigate);
-
-  return (
-    <div ref={wrapRef} style={{ position: "relative" }}>
-      <div style={{ display: "flex", gap: 4 }}>
-        <input
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") handleSearch(); }}
-          placeholder="시세 검색"
-          style={{
-            width: 110, padding: "6px 8px", borderRadius: 6,
-            border: "1.5px solid var(--border-color)",
-            background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 11,
-          }}
-        />
-        <button
-          onClick={handleSearch}
-          disabled={!query.trim()}
-          style={{
-            padding: "6px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
-            background: "var(--color-primary)", color: "#fff", border: "none",
-            cursor: query.trim() ? "pointer" : "not-allowed",
-            opacity: query.trim() ? 1 : 0.4, flexShrink: 0,
-          }}
-        >
-          검색
-        </button>
-      </div>
-
-      {showDrop && suggestions.length > 0 && (
-        <div style={{
-          position: "absolute", top: "100%", right: 0,
-          marginTop: 4, zIndex: 100, minWidth: 260, width: "max-content",
-          background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
-          borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-          maxHeight: 280, overflowY: "auto",
-        }}>
-          {suggestions.map((item: any, i: number) => {
-            const name = item.itemName || "";
-            const id = item.itemId || "";
-            const rarity = item.itemRarity || "";
-            return (
-              <div
-                key={`${id || name}-${i}`}
-                onMouseDown={e => { e.preventDefault(); pick(name); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "7px 10px", cursor: "pointer", transition: "background 0.1s",
-                  borderBottom: i < suggestions.length - 1 ? "1px solid var(--border-color)" : "none",
-                }}
-                onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "var(--color-primary-light)"; }}
-                onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-              >
-                <NavItemImg itemId={id} itemName={name} rarity={rarity} size={24} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 12, fontWeight: 500,
-                    color: rarity ? getRarityColorNav(rarity) : "var(--text-primary)",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>{name}</div>
-                </div>
-                {item.unitPrice !== undefined && (
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", flexShrink: 0 }}>
-                    {item.unitPrice.toLocaleString()}G
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function Nav() {
   const pathname = usePathname();
   const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
 
   const handleNavigate = (itemName: string) => {
     router.push(`/sold?q=${encodeURIComponent(itemName)}`);
@@ -313,17 +216,26 @@ export default function Nav() {
 
   return (
     <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--color-primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900 }}>D</div>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px" }}>
+        {/* 1행: 로고 — 중앙 정렬, 배경 없음 */}
+        <Link href="/" style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          gap: 10, textDecoration: "none",
+          padding: "4px 0", marginBottom: 10,
+        }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--color-primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, flexShrink: 0 }}>D</div>
           <div style={{ textAlign: "left" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>던프</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>던프</div>
             <div style={{ fontSize: 10, color: "var(--text-muted)" }}>시세 알림 & 아이템 검색</div>
           </div>
         </Link>
 
-        {/* ── 데스크톱: 탭들 + 구분선 + 검색 ── */}
-        <nav className="hidden md:flex" style={{ gap: 4, alignItems: "center" }}>
+        {/* 2행: 탭들 + 검색 (검색은 오른쪽 끝) */}
+        <nav style={{
+          display: "flex", alignItems: "center", gap: 4,
+          overflowX: "auto",
+          scrollbarWidth: "none",
+        }}>
           {NAV_ITEMS.map((t) => (
             <Link
               key={t.href}
@@ -331,6 +243,7 @@ export default function Nav() {
               className={`nav-tab ${pathname === t.href ? "active" : ""}`}
               style={{
                 textDecoration: "none",
+                flexShrink: 0,
                 ...(t.href === "/guide" && pathname !== t.href ? {
                   color: "var(--color-accent)",
                   border: "1px solid var(--color-accent-light)",
@@ -340,26 +253,8 @@ export default function Nav() {
               {t.label}
             </Link>
           ))}
-
-          {/* 구분선 + 검색 (던린이 가이드 바로 뒤) */}
-          <div style={{ width: 1, height: 20, background: "var(--border-color)", margin: "0 4px", flexShrink: 0 }} />
-          <NavSearchDesktop onNavigate={handleNavigate} />
+          <NavSearch onNavigate={handleNavigate} />
         </nav>
-
-        {/* ── 모바일 ── */}
-        <div className="md:hidden" style={{ display: "flex", gap: 6, alignItems: "center" }} ref={menuRef}>
-          <NavSearchMobile onNavigate={handleNavigate} />
-          <button onClick={() => setMenuOpen(!menuOpen)} style={{ padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 500, background: "var(--bg-primary)", border: "1px solid var(--border-color)", color: "var(--text-secondary)", cursor: "pointer", flexShrink: 0 }}>메뉴 ▾</button>
-          {menuOpen && (
-            <div className="animate-slide-down" style={{ position: "absolute", right: 16, top: "100%", marginTop: 4, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.08)", minWidth: 160, zIndex: 50, padding: "4px 0" }}>
-              {NAV_ITEMS.map((t) => (
-                <Link key={t.href} href={t.href} onClick={() => setMenuOpen(false)} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 12, textDecoration: "none", color: pathname === t.href ? "var(--color-primary)" : t.href === "/guide" ? "var(--color-accent)" : "var(--text-secondary)", background: pathname === t.href ? "var(--color-primary-light)" : "transparent" }}>
-                  {t.label}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </header>
   );
