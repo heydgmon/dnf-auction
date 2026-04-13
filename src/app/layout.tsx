@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <head>
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />  {/* ← 이 줄 추가 */}
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen">
         <div className="min-h-screen flex flex-col">
           <Nav />
-          <main style={{ flex: 1, maxWidth: 960, margin: "0 auto", width: "100%", padding: "24px 16px" }}>
+          <main style={{ flex: 1, width: "100%", padding: "24px 24px" }}>
             {children}
           </main>
           <Footer />

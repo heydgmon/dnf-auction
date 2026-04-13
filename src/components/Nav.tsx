@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { href: "/alerts", label: "알림" },
   { href: "/auction", label: "경매장" },
   { href: "/sold", label: "시세" },
-  { href: "/items", label: "아이템 DB" },
   { href: "/setitems", label: "세트 아이템" },
   { href: "/guide", label: "던린이 가이드" },
 ];
@@ -243,26 +242,27 @@ export default function Nav() {
 
   return (
     <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 16px" }}>
-        <Link href="/" style={{
-          display: "flex", alignItems: "center",
-          gap: 10, textDecoration: "none",
-          padding: "4px 0", marginBottom: 10,
-        }}>
-          <svg width="32" height="32" viewBox="0 0 32 32">
-            <rect width="32" height="32" rx="7" fill="var(--color-primary)"/>
-            <rect x="6" y="7" width="12" height="7" rx="2" fill="white"/>
-            <line x1="18" y1="11" x2="26" y2="26" stroke="white" strokeWidth="4" strokeLinecap="round"/>
-            <rect x="21" y="23" width="7" height="4" rx="1.5" fill="white" opacity="0.85"/>
-          </svg>
-          <div style={{ textAlign: "left" }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>던프</div>
-            <div style={{ fontSize: 10, color: "var(--text-muted)" }}>시세 알림 & 아이템 검색</div>
-          </div>
-        </Link>
+      <div style={{ width: "100%", padding: "10px 24px" }}>
+        {/* ── 한 줄 레이아웃: 로고 + 탭 + 검색 ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {/* 로고 */}
+          <Link href="/" style={{
+            display: "flex", alignItems: "center",
+            gap: 8, textDecoration: "none", flexShrink: 0,
+          }}>
+            <svg width="28" height="28" viewBox="0 0 32 32">
+              <rect width="32" height="32" rx="7" fill="var(--color-primary)"/>
+              <rect x="6" y="7" width="12" height="7" rx="2" fill="white"/>
+              <line x1="18" y1="11" x2="26" y2="26" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+              <rect x="21" y="23" width="7" height="4" rx="1.5" fill="white" opacity="0.85"/>
+            </svg>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em", lineHeight: 1.2 }}>던프</div>
+              <div style={{ fontSize: 9, color: "var(--text-muted)", lineHeight: 1.2 }}>시세 알림 & 아이템 검색</div>
+            </div>
+          </Link>
 
-        {/* nav(overflowX:auto)와 NavSearch를 분리하여 드롭다운이 잘리지 않도록 함 */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {/* 탭 메뉴 */}
           <nav style={{
             display: "flex", alignItems: "center", gap: 4,
             flex: 1, minWidth: 0,
@@ -274,19 +274,14 @@ export default function Nav() {
                 key={t.href}
                 href={t.href}
                 className={`nav-tab ${pathname === t.href ? "active" : ""}`}
-                style={{
-                  textDecoration: "none",
-                  flexShrink: 0,
-                  ...(t.href === "/guide" && pathname !== t.href ? {
-                    color: "var(--color-accent)",
-                    border: "1px solid var(--color-accent-light)",
-                  } : {}),
-                }}
+                style={{ textDecoration: "none", flexShrink: 0 }}
               >
                 {t.label}
               </Link>
             ))}
           </nav>
+
+          {/* 검색 */}
           <NavSearch onNavigate={handleNavigate} />
         </div>
       </div>
@@ -302,6 +297,7 @@ export function Footer() {
         <Link href="/privacy" style={{ color: "var(--text-muted)", textDecoration: "none" }}>개인정보 처리방침</Link>
         <Link href="/terms" style={{ color: "var(--text-muted)", textDecoration: "none" }}>이용약관</Link>
         <Link href="/contact" style={{ color: "var(--text-muted)", textDecoration: "none" }}>문의</Link>
+        <Link href="/items" style={{ color: "var(--text-muted)", textDecoration: "none" }}>아이템 DB</Link>
         <a href="https://developers.neople.co.kr/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Neople Open API</a>
       </div>
       <p>Data provided by Neople Open API · Not affiliated with Neople or Nexon</p>
