@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen">
         <div className="min-h-screen flex flex-col">
           <Nav />
-          <main style={{ flex: 1, maxWidth: 1200, margin: "0 auto", width: "100%", padding: "24px 24px" }}>
+          <main style={{ flex: 1, maxWidth: 1060, margin: "0 auto", width: "100%", padding: "24px 24px" }}>
             {children}
           </main>
           <Footer />
