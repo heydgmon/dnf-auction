@@ -242,7 +242,7 @@ export default function Nav() {
 
   return (
     <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
-      <div style={{ width: "100%", padding: "10px 24px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "10px 24px" }}>
         {/* ── 한 줄 레이아웃: 로고 + 탭 + 검색 ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {/* 로고 */}
