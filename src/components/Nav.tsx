@@ -227,7 +227,13 @@ export default function Nav() {
           gap: 10, textDecoration: "none",
           padding: "4px 0", marginBottom: 10,
         }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--color-primary)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, flexShrink: 0 }}>D</div>
+          // 변경
+          <svg width="32" height="32" viewBox="0 0 32 32">
+            <rect width="32" height="32" rx="7" fill="var(--color-primary)"/>
+            <rect x="6" y="7" width="12" height="7" rx="2" fill="white"/>
+            <line x1="18" y1="11" x2="26" y2="26" stroke="white" stroke-width="4" stroke-linecap="round"/>
+            <rect x="21" y="23" width="7" height="4" rx="1.5" fill="white" opacity="0.85"/>
+          </svg>
           <div style={{ textAlign: "left" }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>던프</div>
             <div style={{ fontSize: 10, color: "var(--text-muted)" }}>시세 알림 & 아이템 검색</div>
