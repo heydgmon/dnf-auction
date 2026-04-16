@@ -7,7 +7,13 @@
  * 3. EXPIRED 상태 (30분 초과): 새로 빌드 (초기 로딩만)
  *
  * 서버 시작 시 워밍업하므로 첫 사용자 요청부터 즉시 응답 가능.
+ *
+ * ★ 거래 회전율 (turnoverRate):
+ *   최근 7일 거래 건수 / 현재 등록 매물 수 × 100
+ *   높을수록 "빠르게 팔리는" 아이템, 낮을수록 "쌓여있는" 아이템.
  */
+
+import { getMultiItemPriceHistory } from "./price-history";
 
 interface SharedCache {
   trendingItems: any[];
@@ -31,6 +37,13 @@ const KEYWORDS = [
   "의", "은",
 ];
 
+// 회전율 계산에 사용할 기간 (일)
+const TURNOVER_WINDOW_DAYS = 7;
+// 회전율 계산에 필요한 최소 매물 수 (노이즈 제거)
+const MIN_LISTING_COUNT = 2;
+// 상위 N개 아이템만 체결 데이터 조회 (API 호출 비용 절감)
+const TOP_CANDIDATES_FOR_TURNOVER = 80;
+
 async function fetchAuction(keyword: string, apiKey: string): Promise<any[]> {
   try {
     const res = await fetch(
@@ -42,6 +55,32 @@ async function fetchAuction(keyword: string, apiKey: string): Promise<any[]> {
     return data.rows || [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * 특정 아이템의 최근 7일 체결 건수 조회 (auction-sold 직접 호출)
+ * DynamoDB에 데이터가 없을 때의 fallback
+ */
+async function fetchSoldVolume(itemName: string, apiKey: string): Promise<number> {
+  try {
+    const res = await fetch(
+      `${API_BASE}/df/auction-sold?itemName=${encodeURIComponent(itemName)}&wordType=match&limit=100&apikey=${encodeURIComponent(apiKey)}`,
+      { headers: { Accept: "application/json" }, cache: "no-store" }
+    );
+    if (!res.ok) return 0;
+    const data = await res.json();
+    const rows = data.rows || [];
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - TURNOVER_WINDOW_DAYS);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+    return rows
+      .filter((r: any) => (r.soldDate || "").slice(0, 10) >= cutoffStr)
+      .filter((r: any) => (r.itemName || "") === itemName)
+      .reduce((sum: number, r: any) => sum + (r.count || 1), 0);
+  } catch {
+    return 0;
   }
 }
 
@@ -67,7 +106,7 @@ async function buildData(): Promise<SharedCache | null> {
     }
   }
 
-  // trending용 가공
+  // 아이템별 집계 (매물 수 + 평균 개당 가격)
   const itemMap = new Map<string, {
     itemName: string;
     auctionCount: number;
@@ -93,12 +132,65 @@ async function buildData(): Promise<SharedCache | null> {
     }
   }
 
-  const trendingItems = Array.from(itemMap.values())
+  // ── 회전율 계산 대상 선별 ──
+  // 매물이 너무 적은 아이템은 제외 (노이즈), 너무 많은 후보는 API 비용 때문에 컷
+  const candidates = Array.from(itemMap.values())
+    .filter(i => i.auctionCount >= MIN_LISTING_COUNT)
     .sort((a, b) => b.auctionCount - a.auctionCount)
-    .slice(0, 30);
+    .slice(0, TOP_CANDIDATES_FOR_TURNOVER);
+
+  // ── 1단계: DynamoDB에서 7일치 체결량 조회 (주력) ──
+  const candidateNames = candidates.map(c => c.itemName);
+  const historyMap = await getMultiItemPriceHistory(candidateNames, TURNOVER_WINDOW_DAYS).catch(() => new Map());
+
+  // ── 2단계: DB에 없는 아이템은 auction-sold API로 fallback (병렬, 상위만) ──
+  const needsFallback: string[] = [];
+  const soldVolumeMap = new Map<string, number>();
+
+  for (const cand of candidates) {
+    const records = historyMap.get(cand.itemName) || [];
+    if (records.length > 0) {
+      const vol = records.reduce((sum, rec) => sum + (rec.totalVolume || 0), 0);
+      soldVolumeMap.set(cand.itemName, vol);
+    } else {
+      needsFallback.push(cand.itemName);
+    }
+  }
+
+  // fallback은 상위 30개로 제한 (API 호출 폭발 방지)
+  const fallbackTargets = needsFallback.slice(0, 30);
+  const fallbackResults = await Promise.all(
+    fallbackTargets.map(async (name) => ({
+      name,
+      volume: await fetchSoldVolume(name, apiKey),
+    }))
+  );
+  for (const { name, volume } of fallbackResults) {
+    soldVolumeMap.set(name, volume);
+  }
+
+  // ── 회전율 계산 및 정렬 ──
+  const ranked = candidates
+    .map(cand => {
+      const soldVolume = soldVolumeMap.get(cand.itemName) ?? 0;
+      // 회전율 = (7일 체결량 / 현재 매물 수) × 100
+      const turnoverRate = cand.auctionCount > 0
+        ? Math.round((soldVolume / cand.auctionCount) * 100)
+        : 0;
+      return {
+        ...cand,
+        soldVolume,
+        turnoverRate,
+      };
+    })
+    // 거래가 전혀 없는 아이템은 제외 (쌓여만 있는 것)
+    .filter(i => i.soldVolume > 0)
+    .sort((a, b) => b.turnoverRate - a.turnoverRate);
+
+  const trendingItems = ranked.slice(0, 30);
 
   const elapsed = Date.now() - start;
-  console.log(`[SHARED] Build done in ${elapsed}ms: ${trendingItems.length} trending, ${allRows.length} total rows`);
+  console.log(`[SHARED] Build done in ${elapsed}ms: ${trendingItems.length} trending (turnover), ${allRows.length} total rows, ${fallbackTargets.length} fallback fetches`);
 
   return {
     trendingItems,

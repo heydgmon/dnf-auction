@@ -11,6 +11,9 @@ interface TrendingItem {
   itemRarity: string;
   itemId: string;
   itemType: string;
+  // 거래 회전율 관련 필드 (새로 추가)
+  turnoverRate?: number;  // % 단위 (예: 250 = 250%)
+  soldVolume?: number;    // 최근 7일 체결량
 }
 
 interface ChartRow {
@@ -75,6 +78,16 @@ function MiniChart({ data, color, height = 60 }: { data: ChartRow[]; color: stri
   );
 }
 
+/* ═══ 회전율 포매터 ═══
+   회전율 = (7일 체결량 / 현재 매물 수) × 100
+   예: 250% → 매물 1개당 주당 2.5회 체결
+       50%  → 매물 2개당 주당 1회 체결 (느림) */
+function formatTurnover(rate?: number): string {
+  if (rate === undefined || rate === null) return "—";
+  if (rate >= 1000) return `${(rate / 100).toFixed(0)}x`;
+  return `${rate}%`;
+}
+
 /* ═══ 아이템 상세 패널 (전체 너비) ═══ */
 function ItemDetailPanel({ item, onClose }: { item: TrendingItem; onClose: () => void }) {
   const [chartData, setChartData] = useState<ChartRow[]>([]);
@@ -113,7 +126,9 @@ function ItemDetailPanel({ item, onClose }: { item: TrendingItem; onClose: () =>
         <ItemImg itemId={item.itemId} itemName={item.itemName} rarity={item.itemRarity} size={44} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: getRarityColor(item.itemRarity) }}>{item.itemName}</div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{item.itemType} · {item.itemRarity} · 등록 {item.auctionCount}건+</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+            {item.itemType} · {item.itemRarity} · 회전율 {formatTurnover(item.turnoverRate)}
+          </div>
         </div>
         <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)", color: "var(--text-muted)", fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>✕</button>
       </div>
@@ -246,7 +261,9 @@ export default function HomeClient() {
     <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <section>
         <div className="section-title" style={{ marginBottom: 12 }}>경매장 인기 아이템 TOP 20</div>
-        <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>현재 경매장에 등록된 매물이 많은 순서입니다. 클릭하면 시세를 확인할 수 있습니다.</p>
+        <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>
+          거래 회전율이 높은 순서입니다. 회전율 = 최근 7일 체결량 ÷ 현재 매물 수 × 100. 값이 높을수록 빠르게 팔리는 아이템입니다.
+        </p>
         {loading && <SkeletonList count={8} />}
         {!loading && items.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -273,8 +290,8 @@ export default function HomeClient() {
                     <div style={{ fontSize: 14, fontWeight: 700, color: getRarityColor(item.itemRarity), marginTop: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.itemName}</div>
                     <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{item.itemType}</div>
                     <div style={{ marginTop: 10 }}>
-                      <div style={{ fontSize: 10, color: "var(--text-muted)" }}>등록 매물</div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--color-primary)" }}>{item.auctionCount}건+</div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)" }}>거래 회전율</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--color-primary)" }}>{formatTurnover(item.turnoverRate)}</div>
                     </div>
                     <div style={{ fontSize: 10, color: "var(--color-primary)", marginTop: 8, opacity: 0.7 }}>클릭하여 시세 확인</div>
                   </div>
@@ -308,8 +325,8 @@ export default function HomeClient() {
                       <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{item.itemType}</div>
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-primary)" }}>{item.auctionCount}건+</div>
-                      <div style={{ fontSize: 10, color: "var(--text-muted)" }}>등록 매물</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-primary)" }}>{formatTurnover(item.turnoverRate)}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)" }}>거래 회전율</div>
                     </div>
                   </div>
                   {/* 5~20위는 해당 행 바로 아래에 표시 */}
