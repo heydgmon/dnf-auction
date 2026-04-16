@@ -13,7 +13,7 @@
  *   높을수록 "빠르게 팔리는" 아이템, 낮을수록 "쌓여있는" 아이템.
  */
 
-import { getMultiItemPriceHistory } from "./price-history";
+import { getMultiItemPriceHistory, DailyPriceRecord } from "./price-history";
 
 interface SharedCache {
   trendingItems: any[];
@@ -141,7 +141,8 @@ async function buildData(): Promise<SharedCache | null> {
 
   // ── 1단계: DynamoDB에서 7일치 체결량 조회 (주력) ──
   const candidateNames = candidates.map(c => c.itemName);
-  const historyMap = await getMultiItemPriceHistory(candidateNames, TURNOVER_WINDOW_DAYS).catch(() => new Map());
+  const historyMap: Map<string, DailyPriceRecord[]> = await getMultiItemPriceHistory(candidateNames, TURNOVER_WINDOW_DAYS)
+    .catch(() => new Map<string, DailyPriceRecord[]>());
 
   // ── 2단계: DB에 없는 아이템은 auction-sold API로 fallback (병렬, 상위만) ──
   const needsFallback: string[] = [];
@@ -150,7 +151,7 @@ async function buildData(): Promise<SharedCache | null> {
   for (const cand of candidates) {
     const records = historyMap.get(cand.itemName) || [];
     if (records.length > 0) {
-      const vol = records.reduce((sum, rec) => sum + (rec.totalVolume || 0), 0);
+      const vol = records.reduce((sum: number, rec: DailyPriceRecord) => sum + (rec.totalVolume || 0), 0);
       soldVolumeMap.set(cand.itemName, vol);
     } else {
       needsFallback.push(cand.itemName);
