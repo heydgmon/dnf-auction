@@ -33,7 +33,7 @@ interface HardcodedItem {
 
 const HARDCODED_ITEMS: Record<string, HardcodedItem[]> = {
   "칭호": [
-    { searchKeyword: "운명이 담긴 책[100Lv]",    displayName: "운명이 담긴 책[100Lv]" },
+    { searchKeyword: "운명이 담긴 책[30Lv]",    displayName: "운명이 담긴 책[30Lv]" },
     { searchKeyword: "프로스트의 전설 플래티넘[100Lv]",   displayName: "프로스트의 전설 플래티넘[100Lv]" },
     { searchKeyword: "군자의 사계 플래티넘[30Lv]",       displayName: "군자의 사계 플래티넘[30Lv]" },
   ],
