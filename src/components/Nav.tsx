@@ -297,7 +297,6 @@ export function Footer() {
         <Link href="/privacy" style={{ color: "var(--text-muted)", textDecoration: "none" }}>개인정보 처리방침</Link>
         <Link href="/terms" style={{ color: "var(--text-muted)", textDecoration: "none" }}>이용약관</Link>
         <Link href="/contact" style={{ color: "var(--text-muted)", textDecoration: "none" }}>문의</Link>
-        <Link href="/items" style={{ color: "var(--text-muted)", textDecoration: "none" }}>아이템 DB</Link>
         <a href="https://developers.neople.co.kr/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Neople Open API</a>
       </div>
       <p>Data provided by Neople Open API · Not affiliated with Neople or Nexon</p>

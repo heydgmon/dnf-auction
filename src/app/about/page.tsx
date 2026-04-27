@@ -30,9 +30,6 @@ export default function AboutPage() {
         <p style={{ fontSize: 14, color: "#475569", marginTop: 8 }}>
           시세 조회 — 최근 거래 완료된 아이템의 실제 거래 가격을 확인하여 적정 매매 가격을 판단할 수 있습니다.
         </p>
-        <p style={{ fontSize: 14, color: "#475569", marginTop: 8 }}>
-          아이템 DB — 던전앤파이터의 전체 아이템 상세 스펙(레벨, 등급, 효과, 세트 정보 등)을 조회할 수 있습니다.
-        </p>
       </section>
 
       <section style={{ marginBottom: 32 }}>

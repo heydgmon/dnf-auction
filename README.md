@@ -44,11 +44,6 @@
 - 이메일당 최대 3개, 중복 등록 방지, 스팸 방지 레이트 리밋
 - API Gateway + Lambda + DynamoDB 기반
 
-### 아이템 DB
-- 던파 전체 아이템 상세 스펙 조회
-- 천해천 신규 아이템 (Lv.115 서약/결정) 하이라이트
-- 세트 아이템 검색 + 연도별 목록
-
 ---
 
 ## 기술 스택
@@ -96,9 +91,6 @@ dnf-auction/
 │   │   ├── alerts/                      # 시세 알림
 │   │   │   ├── page.tsx
 │   │   │   └── AlertClient.tsx
-│   │   ├── items/                       # 아이템 DB
-│   │   │   ├── page.tsx
-│   │   │   └── ItemsClient.tsx
 │   │   ├── setitems/                    # 세트 아이템
 │   │   │   ├── page.tsx
 │   │   │   └── SetItemsClient.tsx
@@ -118,7 +110,6 @@ dnf-auction/
 │   │       ├── auction-sold-history/    # 시세 히스토리 (DB + API)
 │   │       ├── alert-register/route.ts  # 알림 등록 (레이트 리밋)
 │   │       ├── alert/route.ts           # 알림 조회/삭제
-│   │       ├── items/route.ts           # 아이템 검색
 │   │       ├── item-detail/route.ts     # 아이템 상세
 │   │       ├── item-shop/route.ts       # 상점 판매 정보
 │   │       ├── item-hashtag/route.ts    # 아이템 해시태그
