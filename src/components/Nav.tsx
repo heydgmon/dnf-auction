@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { href: "/", label: "메인" },
   { href: "/bis", label: "종결템" },
   { href: "/insight", label: "인사이트" },
-  { href: "/alerts", label: "알림" },
   { href: "/auction", label: "경매장" },
   { href: "/sold", label: "시세" },
   { href: "/guide", label: "던린이 가이드" },
@@ -242,9 +241,7 @@ export default function Nav() {
   return (
     <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
       <div style={{ maxWidth: 1060, margin: "0 auto", padding: "10px 24px" }}>
-        {/* ── 한 줄 레이아웃: 로고 + 탭 + 검색 ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {/* 로고 */}
           <Link href="/" style={{
             display: "flex", alignItems: "center",
             gap: 8, textDecoration: "none", flexShrink: 0,
@@ -261,7 +258,6 @@ export default function Nav() {
             </div>
           </Link>
 
-          {/* 탭 메뉴 */}
           <nav style={{
             display: "flex", alignItems: "center", gap: 4,
             flex: 1, minWidth: 0,
@@ -280,7 +276,6 @@ export default function Nav() {
             ))}
           </nav>
 
-          {/* 검색 */}
           <NavSearch onNavigate={handleNavigate} />
         </div>
       </div>
