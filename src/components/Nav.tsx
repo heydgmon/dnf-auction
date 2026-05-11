@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { href: "/alerts", label: "알림" },
   { href: "/auction", label: "경매장" },
   { href: "/sold", label: "시세" },
-  { href: "/setitems", label: "세트 아이템" },
   { href: "/guide", label: "던린이 가이드" },
 ];
 

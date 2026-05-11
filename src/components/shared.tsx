@@ -5,7 +5,6 @@ import {
   AuctionItem, AuctionSearchResponse,
   AuctionSoldItem, AuctionSoldResponse, PopularItem,
   AlertRule, AlertRegisterResponse, AlertListResponse,
-  SetItemResult, SetItemSearchResponse,
   ItemSearchResult, ItemSearchResponse,
 } from "@/lib/types";
 import { getRarityColor, getRarityBg, formatGold, formatFullGold, validateEmail, formatDate } from "@/lib/utils";

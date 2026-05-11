@@ -91,9 +91,6 @@ dnf-auction/
 │   │   ├── alerts/                      # 시세 알림
 │   │   │   ├── page.tsx
 │   │   │   └── AlertClient.tsx
-│   │   ├── setitems/                    # 세트 아이템
-│   │   │   ├── page.tsx
-│   │   │   └── SetItemsClient.tsx
 │   │   ├── guide/page.tsx               # 던린이 가이드
 │   │   ├── about/page.tsx               # 소개
 │   │   ├── privacy/page.tsx             # 개인정보 처리방침
@@ -114,8 +111,6 @@ dnf-auction/
 │   │       ├── item-shop/route.ts       # 상점 판매 정보
 │   │       ├── item-hashtag/route.ts    # 아이템 해시태그
 │   │       ├── multi-items/route.ts     # 다중 아이템 조회
-│   │       ├── setitems/route.ts        # 세트 아이템 검색
-│   │       ├── setitems-all/route.ts    # 연도별 세트 (캐싱)
 │   │       ├── popular-items/route.ts   # 인기 아이템 (auction-sold)
 │   │       └── price-snapshot/route.ts  # 시세 스냅샷 트리거
 │   │

@@ -114,8 +114,6 @@ export interface ItemDetailResponse {
   itemAvailableLevel: number;
   itemExplain: string;
   itemFlavorText?: string;
-  setItemId?: string;
-  setItemName?: string;
   error?: ApiError;
 }
 
@@ -131,17 +129,6 @@ export interface ItemShopResponse {
 
 export interface ItemHashtagResponse {
   rows: { hashtag: string; count: number }[];
-  error?: ApiError;
-}
-
-/* ─── 세트 아이템 ─── */
-export interface SetItemResult {
-  setItemId: string;
-  setItemName: string;
-}
-
-export interface SetItemSearchResponse {
-  rows: SetItemResult[];
   error?: ApiError;
 }
 
