@@ -255,7 +255,7 @@ export default function AuctionClient() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/auction?itemName=${encodeURIComponent("코스믹 어드벤처 패키지")}&wordType=match&limit=10`);
+        const res = await fetch(`/api/auction?itemName=${encodeURIComponent("트로피컬 바캉스 패키지")}&wordType=match&limit=10`);
         const data = await res.json();
         const rows = data.rows || [];
         if (rows.length > 0) {
@@ -290,7 +290,7 @@ export default function AuctionClient() {
         <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)" />
       </Card>
 
-      {/* ═══ 코스믹 어드벤처 패키지 카드 ═══ */}
+      {/* ═══ 트로피컬 바캉스 패키지 카드 ═══ */}
       {!searched && (
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 16, padding: "22px 20px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(147,51,234,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
@@ -308,9 +308,9 @@ export default function AuctionClient() {
           </div>
           <div style={{ background: "var(--bg-primary)", borderRadius: 14, padding: "16px", border: "1px solid var(--border-color)", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
-              {pkgData.loading ? (<div className="skeleton" style={{ width: 52, height: 52, borderRadius: 10, flexShrink: 0 }} />) : (<ItemImg itemId={pkgData.itemId} itemName="코스믹 어드벤처 패키지" rarity={pkgData.itemRarity} size={52} />)}
+              {pkgData.loading ? (<div className="skeleton" style={{ width: 52, height: 52, borderRadius: 10, flexShrink: 0 }} />) : (<ItemImg itemId={pkgData.itemId} itemName="트로피컬 바캉스 패키지" rarity={pkgData.itemRarity} size={52} />)}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>코스믹 어드벤처 패키지</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>트로피컬 바캉스 패키지</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {pkgData.itemRarity && (<span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: `${getRarityColor(pkgData.itemRarity)}18`, color: getRarityColor(pkgData.itemRarity), fontWeight: 600 }}>{pkgData.itemRarity}</span>)}
                   {pkgData.count > 0 && <span style={{ fontSize: 10, color: "#64748B" }}>등록 {pkgData.count}건+</span>}

@@ -43,7 +43,7 @@ const HARDCODED_ITEMS: Record<string, HardcodedItem[]> = {
     { searchKeyword: "운명을 담는 재단사 알",                displayName: "운명을 담는 재단사 알" },
   ],
   "오라": [
-    { searchKeyword: "카드 오브 파툼 오라 상자",       displayName: "카드 오브 파툼 오라 상자" },
+    { searchKeyword: "트로피컬 바캉스 오라 상자",       displayName: "트로피컬 바캉스 오라 상자" },
     { searchKeyword: "고결한 영혼의 잔상 오라 상자",   displayName: "고결한 영혼의 잔상 오라 상자" },
     { searchKeyword: "초월한 폭풍의 기세 오라 상자",   displayName: "초월한 폭풍의 기세 오라 상자" },
   ],
