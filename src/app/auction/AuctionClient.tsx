@@ -241,7 +241,7 @@ export default function AuctionClient() {
   const [searched, setSearched] = useState(false);
   const [popular, setPopular] = useState<PopularItem[]>([]);
 
-  const SERA_SHOP_PRICE = 39200;
+  const SERA_SHOP_PRICE = 36800;
   const GOLD_TO_WON = 0.001;
 
   const [pkgData, setPkgData] = useState<{
@@ -322,14 +322,14 @@ export default function AuctionClient() {
                 <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>경매장 최저가</div>
                 {pkgData.loading ? (<div className="skeleton" style={{ height: 22, borderRadius: 4 }} />) : pkgData.lowestPrice > 0 ? (<><div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-accent)", letterSpacing: "-0.02em" }}>{formatGold(pkgData.lowestPrice)}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>골드</div></>) : (<div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>매물 없음</div>)}
               </div>
-              <div style={{ flex: 1, background: "rgba(0,0,0,0.25)", borderRadius: 10, padding: "12px" }}>
-                <div style={{ fontSize: 10, color: "#64748B", marginBottom: 6 }}>현금 환산가</div>
-                {pkgData.loading ? (<div className="skeleton" style={{ height: 22, borderRadius: 4 }} />) : cashEquivalent > 0 ? (<><div style={{ fontSize: 20, fontWeight: 800, color: "#60A5FA", letterSpacing: "-0.02em" }}>{cashEquivalent.toLocaleString()}</div><div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>원 (1백만G = 1,000원)</div></>) : (<div style={{ fontSize: 14, fontWeight: 600, color: "#475569" }}>—</div>)}
+              <div style={{ flex: 1, background: "var(--color-primary-light)", border: "1px solid var(--border-color)", borderRadius: 10, padding: "12px" }}>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>현금 환산가</div>
+                {pkgData.loading ? (<div className="skeleton" style={{ height: 22, borderRadius: 4 }} />) : cashEquivalent > 0 ? (<><div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-primary)", letterSpacing: "-0.02em" }}>{cashEquivalent.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>원 (1백만G = 1,000원)</div></>) : (<div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>—</div>)}
               </div>
             </div>
-            <div style={{ background: "rgba(0,0,0,0.15)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div><div style={{ fontSize: 10, color: "#64748B" }}>세라샵 판매가</div><div style={{ fontSize: 16, fontWeight: 700, color: "#94A3B8", marginTop: 2 }}>{SERA_SHOP_PRICE.toLocaleString()}원</div></div>
-              <div style={{ fontSize: 10, color: "#64748B", padding: "4px 10px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>공식 가격</div>
+            <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div><div style={{ fontSize: 10, color: "var(--text-muted)" }}>세라샵 판매가</div><div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-secondary)", marginTop: 2 }}>{SERA_SHOP_PRICE.toLocaleString()}원</div></div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", padding: "4px 10px", borderRadius: 6, background: "var(--bg-primary)", border: "1px solid var(--border-color)" }}>공식 가격</div>
             </div>
           </div>
           {!pkgData.loading && pkgData.lowestPrice > 0 && (
@@ -337,19 +337,19 @@ export default function AuctionClient() {
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <div style={{ width: 28, height: 28, borderRadius: 8, background: isBuyNow ? "rgba(5,150,105,0.2)" : "rgba(239,68,68,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{isBuyNow ? "✅" : "⛔"}</div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.02em", color: isBuyNow ? "#34D399" : "#F87171" }}>{isBuyNow ? "경매장에서 사면 이득!" : "지금 사면 손해입니다"}</div>
-                  <div style={{ fontSize: 11, color: isBuyNow ? "#6EE7B7" : "#FCA5A5", marginTop: 2, fontWeight: 500 }}>{isBuyNow ? `세라샵보다 ${priceDiff.toLocaleString()}원 저렴 (${savingsPercent}% 절약)` : `세라샵보다 ${Math.abs(priceDiff).toLocaleString()}원 비쌈`}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.02em", color: isBuyNow ? "var(--color-success)" : "var(--color-danger)" }}>{isBuyNow ? "경매장에서 사면 이득!" : "지금 사면 손해입니다"}</div>
+                  <div style={{ fontSize: 11, color: isBuyNow ? "var(--color-success)" : "var(--color-danger)", marginTop: 2, fontWeight: 500, opacity: 0.85 }}>{isBuyNow ? `세라샵보다 ${priceDiff.toLocaleString()}원 저렴 (${savingsPercent}% 절약)` : `세라샵보다 ${Math.abs(priceDiff).toLocaleString()}원 비쌈`}</div>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8, borderRadius: 8, padding: "10px 12px", background: isBuyNow ? "rgba(5,150,105,0.06)" : "rgba(239,68,68,0.06)" }}>
-                <div style={{ flex: 1 }}><div style={{ fontSize: 10, color: "#64748B", marginBottom: 3 }}>경매장 (현금 환산)</div><div style={{ fontSize: 14, fontWeight: 700, color: isBuyNow ? "#34D399" : "#F87171" }}>{cashEquivalent.toLocaleString()}원</div></div>
-                <div style={{ display: "flex", alignItems: "center", color: "#475569", fontSize: 16, fontWeight: 300 }}>vs</div>
-                <div style={{ flex: 1, textAlign: "right" }}><div style={{ fontSize: 10, color: "#64748B", marginBottom: 3 }}>세라샵</div><div style={{ fontSize: 14, fontWeight: 700, color: "#94A3B8" }}>{SERA_SHOP_PRICE.toLocaleString()}원</div></div>
+              <div style={{ display: "flex", gap: 8, borderRadius: 8, padding: "10px 12px", background: "var(--bg-card)", border: "1px solid var(--border-color)" }}>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>경매장 (현금 환산)</div><div style={{ fontSize: 14, fontWeight: 700, color: isBuyNow ? "var(--color-success)" : "var(--color-danger)" }}>{cashEquivalent.toLocaleString()}원</div></div>
+                <div style={{ display: "flex", alignItems: "center", color: "var(--text-muted)", fontSize: 16, fontWeight: 300 }}>vs</div>
+                <div style={{ flex: 1, textAlign: "right" }}><div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>세라샵</div><div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-secondary)" }}>{SERA_SHOP_PRICE.toLocaleString()}원</div></div>
               </div>
             </div>
           )}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "10px 12px" }}>
-            <div style={{ fontSize: 10, color: "#64748B", lineHeight: 1.6 }}>현금 환산 기준: <span style={{ color: "#94A3B8" }}>1,000,000 골드 = 1,000원</span> · 시세는 실시간 변동됩니다.<br />패키지 내 아이템 개별 가치에 따라 실제 이득 여부는 달라질 수 있습니다.</div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", lineHeight: 1.6 }}>현금 환산 기준: <span style={{ color: "var(--text-secondary)" }}>1,000,000 골드 = 1,000원</span> · 시세는 실시간 변동됩니다.<br />패키지 내 아이템 개별 가치에 따라 실제 이득 여부는 달라질 수 있습니다.</div>
           </div>
         </div>
       )}
