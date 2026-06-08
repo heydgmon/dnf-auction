@@ -171,17 +171,17 @@ function AlertSection() {
       </Card>
 
       {/* ═══ 업데이트 영향 분석 ═══ */}
-      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 16, padding: "24px 20px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(37,99,235,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: -20, left: -20, width: 100, height: 100, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #D97706, #F59E0B)", flexShrink: 0 }} />
-          <div><div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>업데이트 영향 분석</div><div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>천해천 패치 · 시장 영향 리포트</div></div>
-          <div style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 99, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", fontSize: 10, fontWeight: 700, color: "#F87171", letterSpacing: "0.02em" }}>HOT</div>
+      <Card>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>업데이트 영향 분석</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>천해천 패치 · 시장 영향 리포트</div>
+          </div>
+          <div style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 99, background: "var(--bg-primary)", border: "1px solid var(--border-color)", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", letterSpacing: "0.02em" }}>HOT</div>
         </div>
-        <div style={{ background: "var(--bg-primary)", borderRadius: 12, padding: "14px 16px", marginBottom: 16, borderLeft: "3px solid #D97706" }}>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0 }}>이번 <span style={{ color: "var(--color-accent)", fontWeight: 700 }}>천해천 업데이트</span>로...</p>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0, marginTop: 6 }}>특히 <span style={{ color: "var(--color-primary)", fontWeight: 600 }}>던전 플레이에서 사용되는 아이템</span>의 소비량이 빠르게 증가하고 있습니다.</p>
+        <div style={{ background: "var(--bg-primary)", borderRadius: 12, padding: "14px 16px", marginBottom: 16, borderLeft: "3px solid var(--color-primary)" }}>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0 }}>이번 <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>천해천 업데이트</span>로...</p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, margin: 0, marginTop: 6 }}>특히 <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>던전 플레이에서 사용되는 아이템</span>의 소비량이 빠르게 증가하고 있습니다.</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>주목 아이템</div>
@@ -194,32 +194,31 @@ function AlertSection() {
           ].map((item) => {
             const priceData = recommendedPrices[item.name];
             return (
-              <div key={item.name} style={{ flex: "1 1 200px", background: "var(--bg-primary)", borderRadius: 12, padding: "14px 16px", border: "1px solid var(--border-color)", transition: "all 0.2s", cursor: "pointer" }}
-                onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = "var(--color-primary-light)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--color-primary)"; }}
-                onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-primary)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-color)"; }}>
+              <div key={item.name} style={{ flex: "1 1 200px", background: "var(--bg-card)", borderRadius: 12, padding: "14px 16px", border: "1px solid var(--border-color)", transition: "all 0.2s", cursor: "pointer" }}
+                onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--color-primary)"; }}
+                onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-color)"; }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  {priceData?.loading ? (<div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} className="skeleton" />) : (<ItemImg itemId={priceData?.itemId || ""} itemName={item.name} rarity={priceData?.itemRarity} size={40} />)}
+                  {priceData?.loading ? (<div style={{ width: 40, height: 40, borderRadius: 8, flexShrink: 0 }} className="skeleton" />) : (<ItemImg itemId={priceData?.itemId || ""} itemName={item.name} rarity={priceData?.itemRarity} size={40} />)}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 3, padding: "2px 8px", borderRadius: 99, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                      <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "#EF4444", animation: "pulse 2s infinite" }} />
-                      <span style={{ fontSize: 10, fontWeight: 600, color: "#FCA5A5" }}>{item.tag}</span>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 3, padding: "2px 8px", borderRadius: 99, background: "var(--bg-primary)", border: "1px solid var(--border-color)" }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-secondary)" }}>{item.tag}</span>
                     </div>
                   </div>
                 </div>
-                <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 10, color: "#64748B", marginBottom: 4 }}>경매장 최저가</div>
-                  {priceData?.loading ? (<div style={{ fontSize: 16, fontWeight: 800, color: "#475569" }}>조회 중...</div>) : priceData?.lowestPrice ? (<div style={{ display: "flex", alignItems: "baseline", gap: 4 }}><span style={{ fontSize: 18, fontWeight: 800, color: "#F59E0B", letterSpacing: "-0.02em" }}>{formatGold(priceData.lowestPrice)}</span><span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>골드</span></div>) : (<div style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>매물 없음</div>)}
-                  {priceData && !priceData.loading && priceData.count > 0 && (<div style={{ fontSize: 10, color: "#475569", marginTop: 3 }}>등록 매물 {priceData.count}건+</div>)}
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>경매장 최저가</div>
+                  {priceData?.loading ? (<div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-secondary)" }}>조회 중...</div>) : priceData?.lowestPrice ? (<div style={{ display: "flex", alignItems: "baseline", gap: 4 }}><span style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>{formatGold(priceData.lowestPrice)}</span><span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>골드</span></div>) : (<div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>매물 없음</div>)}
+                  {priceData && !priceData.loading && priceData.count > 0 && (<div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>등록 매물 {priceData.count}건+</div>)}
                 </div>
               </div>
             );
           })}
         </div>
-        <div style={{ background: "rgba(37,99,235,0.08)", borderRadius: 10, padding: "12px 14px", border: "1px solid rgba(37,99,235,0.15)", display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <p style={{ fontSize: 11, color: "#93C5FD", lineHeight: 1.65, margin: 0, fontWeight: 500 }}>지금 가격은 이미 <span style={{ color: "#FDE68A", fontWeight: 700 }}>상승 초입 구간</span>으로, 단기적으로 추가 상승 가능성이 있는 구간입니다.</p>
+        <div style={{ background: "var(--bg-primary)", borderRadius: 10, padding: "12px 14px", border: "1px solid var(--border-color)", display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <p style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.65, margin: 0, fontWeight: 500 }}>지금 가격은 이미 <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>상승 초입 구간</span>으로, 단기적으로 추가 상승 가능성이 있는 구간입니다.</p>
         </div>
-      </div>
+      </Card>
 
       {/* 인기 검색 아이템 */}
       {popular.length > 0 && (
@@ -292,59 +291,56 @@ export default function AuctionClient() {
 
       {/* ═══ 트로피컬 바캉스 패키지 카드 ═══ */}
       {!searched && (
-        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 16, padding: "22px 20px", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(147,51,234,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: -30, left: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(217,119,6,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg, #7C3AED, #A855F7)", flexShrink: 0 }} />
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 16, padding: "22px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>패키지 구매 가이드</div>
               <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>경매장 vs 세라샵 가격 비교</div>
             </div>
-            <div style={{ padding: "3px 10px", borderRadius: 99, background: "rgba(147,51,234,0.15)", border: "1px solid rgba(147,51,234,0.3)", fontSize: 10, fontWeight: 700, color: "#C084FC" }}>GUIDE</div>
+            <div style={{ padding: "3px 10px", borderRadius: 99, background: "var(--bg-primary)", border: "1px solid var(--border-color)", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)" }}>GUIDE</div>
           </div>
-          <div style={{ background: "var(--bg-primary)", borderRadius: 0, padding: "10px 14px", marginBottom: 14, borderLeft: "3px solid #A855F7", display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ background: "var(--bg-primary)", borderRadius: 8, padding: "10px 14px", marginBottom: 14, borderLeft: "3px solid var(--color-primary)", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>언제 사는 게 이득인가요?</span>
           </div>
-          <div style={{ background: "var(--bg-primary)", borderRadius: 14, padding: "16px", border: "1px solid var(--border-color)", marginBottom: 14 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "16px", border: "1px solid var(--border-color)", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
               {pkgData.loading ? (<div className="skeleton" style={{ width: 52, height: 52, borderRadius: 10, flexShrink: 0 }} />) : (<ItemImg itemId={pkgData.itemId} itemName="트로피컬 바캉스 패키지" rarity={pkgData.itemRarity} size={52} />)}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>트로피컬 바캉스 패키지</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {pkgData.itemRarity && (<span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: `${getRarityColor(pkgData.itemRarity)}18`, color: getRarityColor(pkgData.itemRarity), fontWeight: 600 }}>{pkgData.itemRarity}</span>)}
-                  {pkgData.count > 0 && <span style={{ fontSize: 10, color: "#64748B" }}>등록 {pkgData.count}건+</span>}
+                  {pkgData.itemRarity && (<span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--border-color)", fontWeight: 600 }}>{pkgData.itemRarity}</span>)}
+                  {pkgData.count > 0 && <span style={{ fontSize: 10, color: "var(--text-muted)" }}>등록 {pkgData.count}건+</span>}
                 </div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <div style={{ flex: 1, background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: "12px" }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>경매장 최저가</div>
-                {pkgData.loading ? (<div className="skeleton" style={{ height: 22, borderRadius: 4 }} />) : pkgData.lowestPrice > 0 ? (<><div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-accent)", letterSpacing: "-0.02em" }}>{formatGold(pkgData.lowestPrice)}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>골드</div></>) : (<div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>매물 없음</div>)}
+                {pkgData.loading ? (<div className="skeleton" style={{ height: 22, borderRadius: 4 }} />) : pkgData.lowestPrice > 0 ? (<><div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>{formatGold(pkgData.lowestPrice)}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>골드</div></>) : (<div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>매물 없음</div>)}
               </div>
-              <div style={{ flex: 1, background: "var(--color-primary-light)", border: "1px solid var(--border-color)", borderRadius: 10, padding: "12px" }}>
+              <div style={{ flex: 1, background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: "12px" }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>현금 환산가</div>
-                {pkgData.loading ? (<div className="skeleton" style={{ height: 22, borderRadius: 4 }} />) : cashEquivalent > 0 ? (<><div style={{ fontSize: 20, fontWeight: 800, color: "var(--color-primary)", letterSpacing: "-0.02em" }}>{cashEquivalent.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>원 (1백만G = 1,000원)</div></>) : (<div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>—</div>)}
+                {pkgData.loading ? (<div className="skeleton" style={{ height: 22, borderRadius: 4 }} />) : cashEquivalent > 0 ? (<><div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>{cashEquivalent.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>원 (1백만G = 1,000원)</div></>) : (<div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>—</div>)}
               </div>
             </div>
-            <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div><div style={{ fontSize: 10, color: "var(--text-muted)" }}>세라샵 판매가</div><div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-secondary)", marginTop: 2 }}>{SERA_SHOP_PRICE.toLocaleString()}원</div></div>
-              <div style={{ fontSize: 10, color: "var(--text-muted)", padding: "4px 10px", borderRadius: 6, background: "var(--bg-primary)", border: "1px solid var(--border-color)" }}>공식 가격</div>
+            <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div><div style={{ fontSize: 10, color: "var(--text-muted)" }}>세라샵 판매가</div><div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginTop: 2 }}>{SERA_SHOP_PRICE.toLocaleString()}원</div></div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", padding: "4px 10px", borderRadius: 6, background: "var(--bg-card)", border: "1px solid var(--border-color)" }}>공식 가격</div>
             </div>
           </div>
           {!pkgData.loading && pkgData.lowestPrice > 0 && (
-            <div style={{ borderRadius: 12, padding: "14px 16px", marginBottom: 12, background: isBuyNow ? "rgba(5,150,105,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${isBuyNow ? "rgba(5,150,105,0.25)" : "rgba(239,68,68,0.25)"}` }}>
+            <div style={{ borderRadius: 12, padding: "14px 16px", marginBottom: 12, background: "var(--bg-card)", border: "1px solid var(--border-color)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: isBuyNow ? "rgba(5,150,105,0.2)" : "rgba(239,68,68,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{isBuyNow ? "✅" : "⛔"}</div>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{isBuyNow ? "✅" : "⛔"}</div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.02em", color: isBuyNow ? "var(--color-success)" : "var(--color-danger)" }}>{isBuyNow ? "경매장에서 사면 이득!" : "지금 사면 손해입니다"}</div>
-                  <div style={{ fontSize: 11, color: isBuyNow ? "var(--color-success)" : "var(--color-danger)", marginTop: 2, fontWeight: 500, opacity: 0.85 }}>{isBuyNow ? `세라샵보다 ${priceDiff.toLocaleString()}원 저렴 (${savingsPercent}% 절약)` : `세라샵보다 ${Math.abs(priceDiff).toLocaleString()}원 비쌈`}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>{isBuyNow ? "경매장에서 사면 이득!" : "지금 사면 손해입니다"}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2, fontWeight: 500 }}>{isBuyNow ? `세라샵보다 ${priceDiff.toLocaleString()}원 저렴 (${savingsPercent}% 절약)` : `세라샵보다 ${Math.abs(priceDiff).toLocaleString()}원 비쌈`}</div>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8, borderRadius: 8, padding: "10px 12px", background: "var(--bg-card)", border: "1px solid var(--border-color)" }}>
-                <div style={{ flex: 1 }}><div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>경매장 (현금 환산)</div><div style={{ fontSize: 14, fontWeight: 700, color: isBuyNow ? "var(--color-success)" : "var(--color-danger)" }}>{cashEquivalent.toLocaleString()}원</div></div>
+              <div style={{ display: "flex", gap: 8, borderRadius: 8, padding: "10px 12px", background: "var(--bg-primary)", border: "1px solid var(--border-color)" }}>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>경매장 (현금 환산)</div><div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{cashEquivalent.toLocaleString()}원</div></div>
                 <div style={{ display: "flex", alignItems: "center", color: "var(--text-muted)", fontSize: 16, fontWeight: 300 }}>vs</div>
-                <div style={{ flex: 1, textAlign: "right" }}><div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>세라샵</div><div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-secondary)" }}>{SERA_SHOP_PRICE.toLocaleString()}원</div></div>
+                <div style={{ flex: 1, textAlign: "right" }}><div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 3 }}>세라샵</div><div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{SERA_SHOP_PRICE.toLocaleString()}원</div></div>
               </div>
             </div>
           )}

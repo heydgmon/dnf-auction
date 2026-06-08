@@ -325,6 +325,119 @@ export default function HomeClient() {
         )}
         {!loading && items.length === 0 && <Empty msg="데이터를 불러오는 중입니다." />}
       </section>
+
+      {/* ═══ 경매장 인사이트 텍스트 섹션 ═══ */}
+      <section style={{
+        padding: "28px 24px",
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-color)",
+        borderRadius: 16,
+      }}>
+        {/* 상단 타이틀 */}
+        <div style={{
+          fontSize: 15,
+          fontWeight: 800,
+          color: "var(--text-primary)",
+          marginBottom: 20,
+          letterSpacing: "-0.02em",
+          borderLeft: "3px solid var(--color-primary)",
+          paddingLeft: 12,
+        }}>
+          경매장에서 손해보는 이유, 대부분 같습니다
+        </div>
+
+        {/* 인용구 3개 */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+          {[
+            "분명히 싸게 산 것 같은데 팔리질 않는다.",
+            "올리자마자 다른 사람이 더 싸게 올렸다.",
+            "며칠 전에 팔았어야 했는데 지금은 반값이 됐다.",
+          ].map((quote, i) => (
+            <div key={i} style={{
+              padding: "10px 14px",
+              background: "var(--bg-primary)",
+              borderRadius: 8,
+              fontSize: 13,
+              color: "var(--text-secondary)",
+              fontStyle: "italic",
+              borderLeft: "2px solid var(--color-accent)",
+            }}>
+              "{quote}"
+            </div>
+          ))}
+        </div>
+
+        {/* 본문 단락 1 */}
+        <p style={{
+          fontSize: 13,
+          color: "var(--text-secondary)",
+          lineHeight: 1.8,
+          marginBottom: 12,
+        }}>
+          경매장에서 손해를 보는 패턴은 생각보다 단순합니다.{" "}
+          <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>
+            시세를 모르거나, 타이밍을 놓쳤거나, 수요를 잘못 읽었거나.
+          </span>{" "}
+          이 세 가지 중 하나입니다.
+        </p>
+
+        <p style={{
+          fontSize: 13,
+          color: "var(--text-secondary)",
+          lineHeight: 1.8,
+          marginBottom: 24,
+        }}>
+          던프라이스는 이 세 가지 중 적어도 하나는 해결해 드릴 수 있습니다. 지금 뭐가 많이 올라오고 있는지, 어떤 카테고리에 거래가 몰리는지, 그 흐름을 보는 것만으로도 경매장을 대하는 감각이 달라집니다.
+        </p>
+
+        {/* 구분선 + 소제목 */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 16,
+        }}>
+          <div style={{ flex: 1, height: 1, background: "var(--border-color)" }} />
+          <div style={{
+            fontSize: 13,
+            fontWeight: 800,
+            color: "var(--text-primary)",
+            letterSpacing: "-0.02em",
+            whiteSpace: "nowrap",
+          }}>
+            결국 던파 경매장도 읽는 사람이 이깁니다
+          </div>
+          <div style={{ flex: 1, height: 1, background: "var(--border-color)" }} />
+        </div>
+
+        {/* 본문 단락 2 */}
+        <p style={{
+          fontSize: 13,
+          color: "var(--text-secondary)",
+          lineHeight: 1.8,
+          marginBottom: 16,
+        }}>
+          주식도, 부동산도, 결국 정보를 먼저 읽은 사람이 유리하듯 던파 경매장도 흐름을 읽는 사람이 골드를 법니다. 거창한 분석이 필요한 게 아닙니다.{" "}
+          <span style={{ color: "var(--color-primary)", fontWeight: 600 }}>
+            오늘 뭐가 많이 올라왔는지, 지금 시세가 어떻게 형성돼 있는지,
+          </span>{" "}
+          그 정도만 알아도 충분합니다.
+        </p>
+
+        {/* 마무리 강조 박스 */}
+        <div style={{
+          padding: "12px 16px",
+          background: "var(--color-primary-light)",
+          border: "1px solid var(--color-primary)",
+          borderRadius: 10,
+          fontSize: 13,
+          color: "var(--color-primary)",
+          fontWeight: 600,
+          lineHeight: 1.7,
+        }}>
+          던프라이스는 그걸 매일, 실시간으로 보여드립니다.
+        </div>
+      </section>
     </div>
   );
 }
