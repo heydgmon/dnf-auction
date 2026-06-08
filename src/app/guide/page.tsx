@@ -9,9 +9,6 @@ const SECTIONS = [
   {
     num: "1",
     title: "아라드 로얄 패스를 가장 먼저 사세요",
-    color: "#2563EB",
-    bgColor: "rgba(37,99,235,0.06)",
-    borderColor: "rgba(37,99,235,0.2)",
     tips: [
       {
         text: "아라드 로얄 패스는 29,800원인데 최소 10만원 이상의 가치를 가집니다",
@@ -22,7 +19,7 @@ const SECTIONS = [
         sub: "칭호, 크리쳐, 오라, 클론레어 무기아바타 중 선택",
         children: [
           "시즌마다 달라지므로 가장 최근에 출시된 것 기준으로 받는게 좋습니다.",
-          "이건 무조건 크리쳐를 받는게 좋습니다 (재단사 알 크리쳐가 가장 최근 출시)",
+          "이건 무조건 오라를 받는게 좋습니다 (트로피컬 바캉스 오라 상자 가장 최근 출시)",
         ],
       },
     ],
@@ -30,9 +27,6 @@ const SECTIONS = [
   {
     num: "2",
     title: "마법부여 카드는 가장 나중에 바르세요",
-    color: "#D97706",
-    bgColor: "rgba(217,119,6,0.06)",
-    borderColor: "rgba(217,119,6,0.2)",
     tips: [
       {
         text: "마법부여 카드는 시즌마다 종결템이 무조건 리셋됩니다",
@@ -50,9 +44,6 @@ const SECTIONS = [
   {
     num: "3",
     title: "딜러는 강화/증폭보다 이게 먼저입니다",
-    color: "#DC2626",
-    bgColor: "rgba(220,38,38,0.06)",
-    borderColor: "rgba(220,38,38,0.2)",
     tips: [
       {
         text: "강화와 증폭은 비용 대비 효율이 가장 떨어지므로 제일 나중에 하세요",
@@ -68,9 +59,6 @@ const SECTIONS = [
   {
     num: "4",
     title: "버퍼는 증폭 효율이 매우 좋습니다",
-    color: "#059669",
-    bgColor: "rgba(5,150,105,0.06)",
-    borderColor: "rgba(5,150,105,0.2)",
     tips: [
       {
         text: "올 10증폭까지는 강력 추천, 11증폭 이상은 비추",
@@ -116,23 +104,23 @@ export default function GuidePage() {
             key={section.num}
             style={{
               background: "var(--bg-card)",
-              border: `1px solid ${section.borderColor}`,
+              border: "1px solid var(--border-color)",
               borderRadius: 16,
               overflow: "hidden",
             }}
           >
             {/* 섹션 헤더 */}
             <div style={{
-              background: section.bgColor,
+              background: "var(--bg-primary)",
               padding: "14px 20px",
-              borderBottom: `1px solid ${section.borderColor}`,
+              borderBottom: "1px solid var(--border-color)",
               display: "flex",
               alignItems: "center",
               gap: 12,
             }}>
               <div style={{
                 width: 32, height: 32, borderRadius: 8,
-                background: section.color,
+                background: "var(--color-primary)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 11, fontWeight: 900, color: "#fff", flexShrink: 0,
               }}>
@@ -147,7 +135,7 @@ export default function GuidePage() {
                 <div key={ti} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                   <div style={{
                     width: 6, height: 6, borderRadius: "50%",
-                    background: section.color,
+                    background: "var(--color-primary)",
                     flexShrink: 0, marginTop: 6,
                   }} />
                   <div style={{ flex: 1 }}>
@@ -165,7 +153,7 @@ export default function GuidePage() {
                             color: "var(--text-secondary)",
                             lineHeight: 1.6,
                           }}>
-                            <span style={{ color: section.color, flexShrink: 0, marginTop: 1 }}>→</span>
+                            <span style={{ color: "var(--color-primary)", flexShrink: 0, marginTop: 1 }}>→</span>
                             <span>{child}</span>
                           </div>
                         ))}
