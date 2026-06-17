@@ -88,10 +88,7 @@ export default function GuidePage() {
     <main style={{ maxWidth: 960, margin: "0 auto", padding: "0" }}>
       {/* 헤더 */}
       <section style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }} />
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>던린이 세팅 가이드</h1>
-        </div>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", marginBottom: 10 }}>던린이 세팅 가이드</h1>
         <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7, padding: "12px 16px", background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 12, borderLeft: "3px solid var(--color-primary)" }}>
           처음 점핑 캐릭터로 시작했을 때, 세팅을 어떻게 해야 할지 어려움을 가지신 분들을 위한 페이지입니다. 우선순위대로 따라가시면 효율적으로 세팅할 수 있습니다.
         </p>
@@ -116,16 +113,7 @@ export default function GuidePage() {
               borderBottom: "1px solid var(--border-color)",
               display: "flex",
               alignItems: "center",
-              gap: 12,
             }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: "var(--color-primary)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 900, color: "#fff", flexShrink: 0,
-              }}>
-                {section.num}
-              </div>
               <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{section.title}</span>
             </div>
 
