@@ -10,6 +10,25 @@ interface BisCategory { category: string; emoji: string; items: BisItem[]; }
 let clientCache: { categories: BisCategory[]; fetchedAt: number } | null = null;
 const CLIENT_CACHE_TTL = 3 * 60 * 1000;
 
+const BIS_GUIDE_ITEMS = [
+  {
+    title: "칭호",
+    desc: "데미지와 스킬 레벨을 동시에 올려주는 핵심 부위입니다. 시즌 한정으로 풀리는 플래티넘 등급이 보통 종결로 취급됩니다.",
+  },
+  {
+    title: "크리쳐",
+    desc: "알 형태로 거래되며, 레벨 표기(예: 75Lv/45Lv)에 따라 성능과 가격이 크게 갈립니다. 같은 이름이라도 레벨에 따라 시세 차이가 크니 정확한 명칭으로 검색하세요.",
+  },
+  {
+    title: "오라",
+    desc: "시즌마다 새 오라가 나오며, 칭호나 크리쳐보다는 가성비가 떨어지는 편입니다.",
+  },
+  {
+    title: "마법부여(카드)",
+    desc: "시즌마다 종결이 리셋되는 부위라 시세 변동이 가장 큽니다. 한 시즌에 수억 골드였던 카드가 다음 시즌엔 폭락하는 일이 흔하므로, 장기 보유보다 필요할 때 구매를 권합니다.",
+  },
+];
+
 /* ── 종결템 스펙 (하드코딩) ── */
 const ITEM_SPECS: Record<string, string> = {
   // 칭호
@@ -44,6 +63,52 @@ const ITEM_SPECS: Record<string, string> = {
   "해방된 비올렌티아 카드":
     "모든 스탯 +190",
 };
+
+function BisGuide() {
+  return (
+    <Card style={{ marginTop: 8 }}>
+      <div className="section-title" style={{ marginBottom: 12 }}>
+        <span>📌</span> 종결템 시세는 어떻게 봐야 하나
+      </div>
+      <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75, marginBottom: 14 }}>
+        종결템은 해당 부위에서 더 올라갈 곳이 없는 최상위 아이템을 말합니다. 던파에서 종결템은 크게 칭호, 크리쳐, 오라, 마법부여(카드) 네 갈래로 나뉘며, 이 페이지는 각 카테고리에서 거래 규모가 큰 상위 아이템의 평균 체결가와 현재 경매장 최저가를 함께 보여줍니다.
+      </p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginBottom: 14 }}>
+        <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)" }}>
+          <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>평균 체결가</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--color-accent-dim)", marginBottom: 4 }}>실제로 팔린 값</div>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>거래 내역을 기준으로 한 체감 시세입니다.</p>
+        </div>
+        <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)" }}>
+          <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>경매장 최저가</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--color-primary)", marginBottom: 4 }}>지금 사면 내야 하는 값</div>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>현재 등록 매물 기준의 즉시 구매 가격입니다.</p>
+        </div>
+      </div>
+
+      <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: 14 }}>
+        두 가격이 비슷하면 시세가 안정적이라는 뜻이고, 최저가가 평균보다 크게 낮으면 급매가 나왔거나 시세가 하락 중일 수 있습니다. 반대로 최저가가 평균보다 높으면 매물이 마르고 있다는 신호입니다.
+      </p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10, marginBottom: 14 }}>
+        {BIS_GUIDE_ITEMS.map((item) => (
+          <div key={item.title} style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-card-hover)", borderLeft: "3px solid var(--color-primary)" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 6 }}>{item.title}</div>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.65 }}>{item.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--color-accent-light)", border: "1px solid rgba(217, 119, 6, 0.25)" }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "var(--color-accent-dim)", marginBottom: 4 }}>평균가 산출 방식</div>
+        <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.65 }}>
+          극단적으로 높거나 낮은 거래(시세 조작성 등록, 오등록 등)는 평균을 왜곡하므로, 중앙값 기준으로 이상치를 제거한 뒤 평균을 냅니다. 따라서 여기 표시되는 평균가는 실제 체감 시세에 가깝습니다.
+        </p>
+      </div>
+    </Card>
+  );
+}
 
 export default function BisClient() {
   const [categories, setCategories] = useState<BisCategory[]>(clientCache?.categories || []);
@@ -106,6 +171,7 @@ export default function BisClient() {
         </section>
       ))}
       {!loading && categories.length === 0 && <Empty msg="종결템 데이터를 불러오는 중입니다." />}
+      <BisGuide />
     </div>
   );
 }
