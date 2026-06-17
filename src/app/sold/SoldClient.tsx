@@ -452,6 +452,42 @@ function SearchChart({ chartData }: { chartData: { date: string; avg: number; co
   return <div style={{ position: "relative", width: "100%", height: 220 }}><canvas ref={canvasRef} /></div>;
 }
 
+function SoldGuide() {
+  return (
+    <Card style={{ marginTop: 8 }}>
+      <div className="section-title" style={{ marginBottom: 12 }}>
+        "현재 매물 가격"과 "실거래 가격"은 다르다
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)" }}>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75 }}>
+            경매장에 올라온 호가(현재 매물)와 실제로 거래가 체결된 가격은 다릅니다.
+          </p>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75, marginTop: 8 }}>
+            파는 사람이 비싸게 올려둔 매물은 안 팔리고 계속 떠 있을 수 있기 때문에, 호가만 보면 시세를 과대평가하기 쉽습니다.
+          </p>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75, marginTop: 8 }}>
+            적정 매매가를 알려면 "실제로 얼마에 팔렸는가"를 봐야 합니다. 이 페이지는 최근 거래가 완료된 가격만 모아 보여주므로, 내가 팔 때 받을 수 있는 현실적인 가격을 가늠할 수 있습니다.
+          </p>
+        </div>
+
+        <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-card-hover)", borderLeft: "3px solid var(--color-primary)" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>일별 평균가 차트 읽는 법</div>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7 }}>
+            검색하면 해당 아이템의 일별 평균 체결가와 거래량을 함께 차트로 보여줍니다.
+          </p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, marginTop: 8 }}>
+            평균가 선이 우상향하면 수요가 늘거나 공급이 줄어 가격이 오르는 중이고, 거래량 막대가 함께 높으면 그 상승에 실거래가 뒷받침되고 있다는 뜻입니다.
+          </p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, marginTop: 8 }}>
+            거래량이 거의 없는데 가격만 출렁이면 소수 거래에 의한 노이즈일 수 있으니 신뢰도를 낮춰 보세요.
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 /* ═══ 메인 컴포넌트 ═══ */
 export default function SoldClient({ initialQuery = "" }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery);
@@ -632,6 +668,7 @@ export default function SoldClient({ initialQuery = "" }: { initialQuery?: strin
         </div>
       )}
       {!loading && searched && !results.length && !error && <Empty msg="거래 내역이 없습니다." />}
+      <SoldGuide />
     </div>
   );
 }

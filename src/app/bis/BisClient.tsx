@@ -68,7 +68,7 @@ function BisGuide() {
   return (
     <Card style={{ marginTop: 8 }}>
       <div className="section-title" style={{ marginBottom: 12 }}>
-        <span>📌</span> 종결템 시세는 어떻게 봐야 하나
+        <span></span> 종결템 시세는 어떻게 봐야 하나
       </div>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75, marginBottom: 14 }}>
         종결템은 해당 부위에서 더 올라갈 곳이 없는 최상위 아이템을 말합니다. 던파에서 종결템은 크게 칭호, 크리쳐, 오라, 마법부여(카드) 네 갈래로 나뉘며, 이 페이지는 각 카테고리에서 거래 규모가 큰 상위 아이템의 평균 체결가와 현재 경매장 최저가를 함께 보여줍니다.
