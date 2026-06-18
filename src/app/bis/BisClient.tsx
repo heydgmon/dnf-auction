@@ -29,6 +29,57 @@ const BIS_GUIDE_ITEMS = [
   },
 ];
 
+const BIS_DETAIL_GUIDE_SECTIONS = [
+  {
+    num: "1",
+    title: "종결템 구매 타이밍",
+    subtitle: "언제 사고 언제 팔아야 하나",
+    tips: [
+      {
+        text: "종결템은 타이밍에 따라 수억 골드가 왔다 갔다 합니다.",
+        sub: "시즌 아이템의 가격 흐름은 비교적 일정한 편입니다. 새 종결템은 출시 직후가 가장 비싸고, 다음 시즌 예고가 뜨는 순간부터 가격이 빠지기 시작합니다.",
+      },
+      {
+        text: "살 때는 시즌 초반, 팔 때는 다음 시즌 예고 전이 기본 원칙입니다.",
+        sub: "특히 마법부여 카드는 시즌이 바뀌면 종결이 통째로 바뀌므로, 시즌 끝물에 비싸게 사는 것은 피하는 것이 좋습니다.",
+      },
+    ],
+  },
+  {
+    num: "2",
+    title: "평균가는 이렇게 산출됩니다",
+    subtitle: "이상치를 제거한 평균",
+    tips: [
+      {
+        text: "극단적으로 높거나 낮은 거래는 평균을 왜곡합니다.",
+        sub: "시세를 띄우려는 의도적인 등록이나, 자릿수를 잘못 입력한 오등록이 대표적입니다. 던프라이스는 이런 거래가 평균에 섞이지 않도록, 중앙값을 기준으로 위아래 이상치를 제거한 뒤 평균을 산출합니다. 따라서 이 페이지에 표시되는 평균가는 실제 체감 시세에 더 가깝습니다.",
+      },
+    ],
+  },
+  {
+    num: "3",
+    title: "자주 묻는 질문 (FAQ)",
+    tips: [
+      {
+        text: "Q. 같은 아이템인데 검색하면 가격이 다르게 나옵니다.",
+        sub: "크리쳐의 알처럼 레벨 표기가 붙는 아이템은 같은 이름이라도 레벨에 따라 전혀 다른 시세를 가집니다. 정확한 시세를 보려면 레벨 표기까지 포함한 전체 명칭으로 검색해야 합니다.",
+      },
+      {
+        text: "Q. 평균 체결가가 경매장 최저가보다 높은데 어떻게 된 건가요?",
+        sub: "최근에 비싸게 팔린 거래는 많은데 지금 막 급매 매물이 올라온 경우입니다. 평균 체결가는 과거 거래 기준, 최저가는 현재 호가 기준이라 이런 역전이 나타날 수 있습니다. 이때는 매물이 빠르게 소진될 가능성이 있으므로 구매 기회로 볼 수 있습니다.",
+      },
+      {
+        text: "Q. 거래량이 적은 종결템은 시세를 믿어도 되나요?",
+        sub: "종결템은 단가가 높아 거래 빈도 자체가 낮습니다. 거래 건수가 적은 아이템은 한두 건의 거래에 평균이 크게 흔들릴 수 있으므로, 평균가는 참고하되 현재 경매장 최저가를 함께 확인하는 것이 좋습니다.",
+      },
+      {
+        text: "Q. 표시된 종결템이 실제 종결이 맞나요?",
+        sub: "시즌이 지나면 새로운 종결템이 출시되며 기존 아이템은 종결 자리에서 밀려납니다. 이 페이지는 매번 갱신된 데이터를 보여줍니다.",
+      },
+    ],
+  },
+];
+
 /* ── 종결템 스펙 (하드코딩) ── */
 const ITEM_SPECS: Record<string, string> = {
   // 칭호
@@ -110,6 +161,58 @@ function BisGuide() {
   );
 }
 
+function BisDetailGuide() {
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {BIS_DETAIL_GUIDE_SECTIONS.map((section) => (
+        <div
+          key={section.num}
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border-color)",
+            borderRadius: 16,
+            overflow: "hidden",
+          }}
+        >
+          <div style={{
+            background: "var(--bg-primary)",
+            padding: "14px 20px",
+            borderBottom: "1px solid var(--border-color)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 5,
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.5 }}>
+              섹션 {section.num} — {section.title}
+            </span>
+            {section.subtitle && (
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", lineHeight: 1.5 }}>
+                {section.subtitle}
+              </span>
+            )}
+          </div>
+
+          <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+            {section.tips.map((tip, ti) => (
+              <div key={ti} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: "var(--color-primary)",
+                  flexShrink: 0, marginTop: 6,
+                }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.6 }}>{tip.text}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2, lineHeight: 1.7 }}>{tip.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 export default function BisClient() {
   const [categories, setCategories] = useState<BisCategory[]>(clientCache?.categories || []);
   const [loading, setLoading] = useState(!clientCache);
@@ -172,6 +275,7 @@ export default function BisClient() {
       ))}
       {!loading && categories.length === 0 && <Empty msg="종결템 데이터를 불러오는 중입니다." />}
       <BisGuide />
+      <BisDetailGuide />
     </div>
   );
 }
