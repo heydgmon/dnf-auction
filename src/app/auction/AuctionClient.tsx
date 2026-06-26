@@ -12,6 +12,84 @@ import {
   formatPriceInput, parsePriceInput, MAX_ALERT_PRICE,
 } from "@/components/shared";
 
+const ALERT_GUIDE_SECTIONS = [
+  {
+    num: "1",
+    title: "알림은 '기다림'을 대신해 줍니다",
+    subtitle: "경매장을 계속 들여다볼 필요가 없습니다",
+    tips: [
+      {
+        text: "원하는 아이템을 싸게 사고 싶을 때, 보통은 경매장을 수시로 새로고침하며 급매가 뜨길 기다립니다.",
+        sub: "시세 알림은 이 기다림을 대신해 줍니다. 목표 가격을 한 번 등록해 두면, 그 가격에 도달했을 때 이메일로 알려줍니다.",
+      },
+      {
+        text: "로그인도 앱 설치도 필요 없이 이메일 주소만으로 등록할 수 있습니다.",
+        sub: "조건이 충족되어 한 번 발송되면 자동으로 종료됩니다. 매번 확인하지 않아도 기회를 놓치지 않게 해 주는 기능입니다.",
+      },
+    ],
+  },
+  {
+    num: "2",
+    title: "목표가는 이렇게 잡으세요",
+    subtitle: "현실적인 숫자라야 알림이 의미가 있습니다",
+    tips: [
+      {
+        text: "목표 가격은 막연한 희망 가격이 아니라 실거래가를 기준으로 잡아야 합니다.",
+        sub: "알림을 걸기 전에 시세 검색에서 최근 평균 체결가를 먼저 확인하세요.",
+      },
+      {
+        text: "시세보다 지나치게 낮게 잡으면 그 가격은 영영 오지 않아 알림이 무의미해집니다.",
+        sub: "너무 높게 잡으면 굳이 알림을 걸 이유가 없습니다. 평소 시세보다 한두 단계 낮은, 가끔 급매로 등장할 법한 가격대를 노리는 것이 가장 효과적입니다. 시세 흐름이 하락세인 아이템이라면, 바닥으로 예상되는 지점에 걸어두고 기다리는 전략도 좋습니다.",
+      },
+    ],
+  },
+  {
+    num: "3",
+    title: "이런 상황에 쓰면 좋습니다",
+    subtitle: "알림 활용 시나리오",
+    tips: [
+      {
+        text: "비싼 아이템을 급매로 줍고 싶을 때",
+        sub: "종결템처럼 단가가 높은 아이템은 가끔 시세보다 크게 싼 급매가 올라옵니다. 목표가를 걸어두면 그 순간을 놓치지 않습니다.",
+      },
+      {
+        text: "재료를 바닥에서 사고 싶을 때",
+        sub: "강화권·증폭권은 증폭 시즌(보통 1월, 방학 이벤트) 전후로 가격이 크게 움직입니다. 시즌 전 저점에 알림을 걸어두면 미리 재료를 확보할 수 있습니다.",
+      },
+      {
+        text: "시즌이 바뀌길 기다릴 때",
+        sub: "마법부여 카드는 다음 시즌 예고가 뜨면 가격이 빠집니다. 사고 싶은 카드의 하락한 목표가를 미리 걸어두는 식으로 활용할 수 있습니다.",
+      },
+    ],
+  },
+  {
+    num: "4",
+    title: "자주 묻는 질문 (FAQ)",
+    tips: [
+      {
+        text: "Q. 알림을 등록했는데 메일이 오지 않습니다.",
+        sub: "아직 목표 가격에 도달하지 않았거나, 메일이 스팸함으로 분류됐을 수 있습니다. 스팸함을 먼저 확인해 보시고, 도메인을 수신 허용으로 등록해 두면 안정적으로 받을 수 있습니다. 알림은 조건 충족 시 1회만 발송된다는 점도 참고하세요.",
+      },
+      {
+        text: "Q. 알림은 몇 개까지 등록할 수 있나요?",
+        sub: "스팸 방지를 위해 이메일당 최대 3개까지 등록할 수 있습니다. 또한 동일한 조건의 알림은 중복으로 등록되지 않습니다.",
+      },
+      {
+        text: "Q. 등록하려는데 자꾸 막힙니다.",
+        sub: "짧은 시간에 너무 많이 요청하면 일시적으로 제한될 수 있습니다(이메일·IP별 시간당 요청 제한). 잠시 후 다시 시도해 주세요. 같은 조건을 이미 등록해 둔 경우에도 중복 등록이 막힙니다.",
+      },
+      {
+        text: "Q. 등록한 알림을 취소할 수 있나요?",
+        sub: "등록한 이메일로 알림을 조회하고 삭제할 수 있습니다. 더 이상 필요 없는 알림은 직접 삭제하거나, 조건이 충족되면 자동으로 종료되도록 두면 됩니다.",
+      },
+      {
+        text: "Q. 로그인 없이 이메일만 쓰는데 안전한가요?",
+        sub: "알림 발송 용도로만 이메일 주소를 사용하며, 비밀번호 같은 민감한 정보는 받지 않습니다. 알림이 한 번 발송되면 해당 등록은 자동으로 종료됩니다.",
+      },
+    ],
+  },
+];
+
 function AuctionRow({ item }: { item: AuctionItem }) {
   const [open, setOpen] = useState(false);
   const upgrade = (item as any).upgrade;
@@ -50,6 +128,58 @@ function AuctionRow({ item }: { item: AuctionItem }) {
         </div>
       )}
     </div>
+  );
+}
+
+function AlertGuide() {
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {ALERT_GUIDE_SECTIONS.map((section) => (
+        <div
+          key={section.num}
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border-color)",
+            borderRadius: 16,
+            overflow: "hidden",
+          }}
+        >
+          <div style={{
+            background: "var(--bg-primary)",
+            padding: "14px 20px",
+            borderBottom: "1px solid var(--border-color)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 5,
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.5 }}>
+              섹션 {section.num} — {section.title}
+            </span>
+            {section.subtitle && (
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", lineHeight: 1.5 }}>
+                {section.subtitle}
+              </span>
+            )}
+          </div>
+
+          <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+            {section.tips.map((tip, ti) => (
+              <div key={ti} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: "var(--color-primary)",
+                  flexShrink: 0, marginTop: 6,
+                }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.6 }}>{tip.text}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2, lineHeight: 1.7 }}>{tip.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
   );
 }
 
@@ -169,6 +299,8 @@ function AlertSection() {
           </div>
         )}
       </Card>
+
+      <AlertGuide />
 
       {/* ═══ 업데이트 영향 분석 ═══ */}
       <Card>

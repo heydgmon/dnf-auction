@@ -125,6 +125,76 @@ const COLORS = [
   "#00BCD4","#CDDC39","#FF9800","#8BC34A","#673AB7",
 ];
 
+const SOLD_GUIDE_SECTIONS = [
+  {
+    num: "1",
+    title: "호가가 아니라 '팔린 가격'을 봅니다",
+    subtitle: "실거래가가 진짜 시세인 이유",
+    tips: [
+      {
+        text: "경매장에 떠 있는 최저가는 누군가 \"이 값에 팔고 싶다\"고 적어 둔 호가일 뿐입니다.",
+        sub: "비싸게 올려둔 매물은 팔리지 않은 채 며칠씩 떠 있기도 해서, 호가만 보면 시세를 실제보다 높게 착각하기 쉽습니다.",
+      },
+      {
+        text: "시세 검색은 호가가 아니라 실제로 체결된 거래 가격을 보여줍니다.",
+        sub: "즉 \"사람들이 진짜로 이 값에 사고팔았다\"는 기록입니다. 팔 물건의 가격을 정하거나 적정 매수가를 판단할 때는, 현재 최저가보다 이 실거래가를 먼저 확인하는 것이 정확합니다.",
+      },
+    ],
+  },
+  {
+    num: "2",
+    title: "차트는 평균가와 거래량을 같이 봅니다",
+    subtitle: "선만 보면 속기 쉽습니다",
+    tips: [
+      {
+        text: "아이템을 검색하면 일별 평균 체결가 추이와 거래량을 차트로 볼 수 있습니다.",
+        sub: "이때 평균가 선만 보지 말고 그 아래 거래량을 반드시 함께 봐야 합니다.",
+      },
+      {
+        text: "거래량이 많은 날의 평균가는 시장의 실제 합의에 가깝습니다.",
+        sub: "단 몇 건만 거래된 날의 평균가는 한두 명의 거래에 휘둘린 값이라 신뢰도가 낮습니다. 평균가가 갑자기 튀었는데 그날 거래량이 거의 없다면, 진짜 시세 변화가 아니라 일시적인 노이즈일 가능성이 높습니다. 거래량이 충분한 구간의 가격을 기준으로 흐름을 읽으세요.",
+      },
+    ],
+  },
+  {
+    num: "3",
+    title: "적정가는 살 때와 팔 때 기준이 다릅니다",
+    subtitle: "매수가와 매도가를 나눠서 잡기",
+    tips: [
+      {
+        text: "같은 아이템이라도 살 때와 팔 때 기준선이 달라야 합니다.",
+        sub: "팔 때는 최근 평균 체결가에서 살짝 아래로 가격을 잡으면 빠르게 팔립니다. 욕심내서 평균보다 높게 올리면 한참 안 팔린 채 묶여 있다가, 그사이 시세가 떨어지면 오히려 손해를 보기 쉽습니다.",
+      },
+      {
+        text: "살 때는 평균 아래로 가끔 등장하는 급매를 노리는 것이 좋습니다.",
+        sub: "평균 체결가를 알고 있으면, 지금 경매장에 뜬 매물이 싼 건지 비싼 건지 바로 판단할 수 있습니다. 원하는 가격의 급매가 자주 안 보인다면 시세 알림을 걸어두는 방법도 있습니다.",
+      },
+    ],
+  },
+  {
+    num: "4",
+    title: "자주 묻는 질문 (FAQ)",
+    tips: [
+      {
+        text: "Q. 거래 내역이 일부만 나옵니다.",
+        sub: "경매장 시세는 최근 100건 또는 최대 1개월 전까지의 거래 내역만 제공됩니다. 던파 Open API 자체의 제한이며, 그보다 오래된 거래는 조회할 수 없습니다.",
+      },
+      {
+        text: "Q. 검색해도 결과가 나오지 않습니다.",
+        sub: "최근에 거래가 한 건도 없었던 아이템이거나, 명칭이 정확하지 않은 경우입니다. 띄어쓰기나 레벨 표기까지 포함한 전체 이름으로 다시 검색해 보세요.",
+      },
+      {
+        text: "Q. 같은 이름인데 시세가 다르게 나옵니다.",
+        sub: "크리쳐의 알처럼 레벨 표기가 붙는 아이템은 같은 이름이라도 레벨에 따라 전혀 다른 시세를 가집니다. 정확한 시세를 보려면 레벨 표기까지 포함한 명칭으로 검색해야 합니다.",
+      },
+      {
+        text: "Q. 평균 체결가가 지금 경매장 최저가보다 높습니다.",
+        sub: "평균 체결가는 과거에 실제로 팔린 거래 기준이고, 최저가는 지금 막 올라온 호가 기준입니다. 최근엔 비싸게 거래됐는데 방금 급매가 올라온 경우 이런 역전이 생깁니다. 이때는 급매가 빠르게 소진될 수 있어 구매 기회로 볼 수 있습니다.",
+      },
+    ],
+  },
+];
+
 /* ═══ 아이템 카드 (차트+정보 항상 노출) ═══ */
 function ItemCard({
   item,
@@ -454,37 +524,87 @@ function SearchChart({ chartData }: { chartData: { date: string; avg: number; co
 
 function SoldGuide() {
   return (
-    <Card style={{ marginTop: 8 }}>
-      <div className="section-title" style={{ marginBottom: 12 }}>
-        "현재 매물 가격"과 "실거래 가격"은 다르다
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)" }}>
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75 }}>
-            경매장에 올라온 호가(현재 매물)와 실제로 거래가 체결된 가격은 다릅니다.
-          </p>
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75, marginTop: 8 }}>
-            파는 사람이 비싸게 올려둔 매물은 안 팔리고 계속 떠 있을 수 있기 때문에, 호가만 보면 시세를 과대평가하기 쉽습니다.
-          </p>
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75, marginTop: 8 }}>
-            적정 매매가를 알려면 "실제로 얼마에 팔렸는가"를 봐야 합니다. 이 페이지는 최근 거래가 완료된 가격만 모아 보여주므로, 내가 팔 때 받을 수 있는 현실적인 가격을 가늠할 수 있습니다.
-          </p>
+    <>
+      <Card style={{ marginTop: 8 }}>
+        <div className="section-title" style={{ marginBottom: 12 }}>
+          "현재 매물 가격"과 "실거래 가격"은 다르다
         </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)" }}>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75 }}>
+              경매장에 올라온 호가(현재 매물)와 실제로 거래가 체결된 가격은 다릅니다.
+            </p>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75, marginTop: 8 }}>
+              파는 사람이 비싸게 올려둔 매물은 안 팔리고 계속 떠 있을 수 있기 때문에, 호가만 보면 시세를 과대평가하기 쉽습니다.
+            </p>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.75, marginTop: 8 }}>
+              적정 매매가를 알려면 "실제로 얼마에 팔렸는가"를 봐야 합니다. 이 페이지는 최근 거래가 완료된 가격만 모아 보여주므로, 내가 팔 때 받을 수 있는 현실적인 가격을 가늠할 수 있습니다.
+            </p>
+          </div>
 
-        <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-card-hover)", borderLeft: "3px solid var(--color-primary)" }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>일별 평균가 차트 읽는 법</div>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7 }}>
-            검색하면 해당 아이템의 일별 평균 체결가와 거래량을 함께 차트로 보여줍니다.
-          </p>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, marginTop: 8 }}>
-            평균가 선이 우상향하면 수요가 늘거나 공급이 줄어 가격이 오르는 중이고, 거래량 막대가 함께 높으면 그 상승에 실거래가 뒷받침되고 있다는 뜻입니다.
-          </p>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, marginTop: 8 }}>
-            거래량이 거의 없는데 가격만 출렁이면 소수 거래에 의한 노이즈일 수 있으니 신뢰도를 낮춰 보세요.
-          </p>
+          <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-card-hover)", borderLeft: "3px solid var(--color-primary)" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>일별 평균가 차트 읽는 법</div>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7 }}>
+              검색하면 해당 아이템의 일별 평균 체결가와 거래량을 함께 차트로 보여줍니다.
+            </p>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, marginTop: 8 }}>
+              평균가 선이 우상향하면 수요가 늘거나 공급이 줄어 가격이 오르는 중이고, 거래량 막대가 함께 높으면 그 상승에 실거래가 뒷받침되고 있다는 뜻입니다.
+            </p>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7, marginTop: 8 }}>
+              거래량이 거의 없는데 가격만 출렁이면 소수 거래에 의한 노이즈일 수 있으니 신뢰도를 낮춰 보세요.
+            </p>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {SOLD_GUIDE_SECTIONS.map((section) => (
+          <div
+            key={section.num}
+            style={{
+              background: "var(--bg-card)",
+              border: "1px solid var(--border-color)",
+              borderRadius: 16,
+              overflow: "hidden",
+            }}
+          >
+            <div style={{
+              background: "var(--bg-primary)",
+              padding: "14px 20px",
+              borderBottom: "1px solid var(--border-color)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 5,
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.5 }}>
+                섹션 {section.num} — {section.title}
+              </span>
+              {section.subtitle && (
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", lineHeight: 1.5 }}>
+                  {section.subtitle}
+                </span>
+              )}
+            </div>
+
+            <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              {section.tips.map((tip, ti) => (
+                <div key={ti} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <div style={{
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: "var(--color-primary)",
+                    flexShrink: 0, marginTop: 6,
+                  }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.6 }}>{tip.text}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2, lineHeight: 1.7 }}>{tip.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+    </>
   );
 }
 
