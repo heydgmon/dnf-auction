@@ -386,7 +386,7 @@ export default function AuctionClient() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/auction?itemName=${encodeURIComponent("트로피컬 바캉스 패키지")}&wordType=match&limit=10`);
+        const res = await fetch(`/api/auction?itemName=${encodeURIComponent("숲속의 유랑악단 패키지")}&wordType=match&limit=10`);
         const data = await res.json();
         const rows = data.rows || [];
         if (rows.length > 0) {
@@ -421,7 +421,7 @@ export default function AuctionClient() {
         <AutocompleteSearch query={query} setQuery={setQuery} onSearch={search} loading={loading} placeholder="아이템 이름 (예: 골고라이언, 리노, 패키지...)" />
       </Card>
 
-      {/* ═══ 트로피컬 바캉스 패키지 카드 ═══ */}
+      {/* ═══ 숲속의 유랑악단 패키지 카드 ═══ */}
       {!searched && (
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: 16, padding: "22px 20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -436,9 +436,9 @@ export default function AuctionClient() {
           </div>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "16px", border: "1px solid var(--border-color)", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
-              {pkgData.loading ? (<div className="skeleton" style={{ width: 52, height: 52, borderRadius: 10, flexShrink: 0 }} />) : (<ItemImg itemId={pkgData.itemId} itemName="트로피컬 바캉스 패키지" rarity={pkgData.itemRarity} size={52} />)}
+              {pkgData.loading ? (<div className="skeleton" style={{ width: 52, height: 52, borderRadius: 10, flexShrink: 0 }} />) : (<ItemImg itemId={pkgData.itemId} itemName="숲속의 유랑악단 패키지" rarity={pkgData.itemRarity} size={52} />)}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>트로피컬 바캉스 패키지</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)", marginBottom: 4 }}>숲속의 유랑악단 패키지</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {pkgData.itemRarity && (<span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--border-color)", fontWeight: 600 }}>{pkgData.itemRarity}</span>)}
                   {pkgData.count > 0 && <span style={{ fontSize: 10, color: "var(--text-muted)" }}>등록 {pkgData.count}건+</span>}
