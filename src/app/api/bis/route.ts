@@ -38,19 +38,19 @@ const HARDCODED_ITEMS: Record<string, HardcodedItem[]> = {
     { searchKeyword: "군자의 사계 플래티넘[30Lv]",       displayName: "군자의 사계 플래티넘[30Lv]" },
   ],
   "크리쳐": [
-    { searchKeyword: "운명을 담는 재단사 플래티넘[75Lv] 알", displayName: "운명을 담는 재단사 플래티넘[75Lv] 알" },
+    { searchKeyword: "플로럴 스태그 알", displayName: "플로럴 스태그 알" },
     { searchKeyword: "운명을 담는 재단사 플래티넘[45Lv] 알", displayName: "운명을 담는 재단사 플래티넘[45Lv] 알" },
     { searchKeyword: "운명을 담는 재단사 알",                displayName: "운명을 담는 재단사 알" },
   ],
   "오라": [
-    { searchKeyword: "트로피컬 바캉스 오라 상자",       displayName: "트로피컬 바캉스 오라 상자" },
+    { searchKeyword: "열대야의 추억",       displayName: "열대야의 추억" },
     { searchKeyword: "고결한 영혼의 잔상 오라 상자",   displayName: "고결한 영혼의 잔상 오라 상자" },
     { searchKeyword: "초월한 폭풍의 기세 오라 상자",   displayName: "초월한 폭풍의 기세 오라 상자" },
   ],
   "마법부여": [
     { searchKeyword: "조율의 감시자 오르테르 카드", displayName: "조율의 감시자 오르테르 카드" },
-    { searchKeyword: "거짓의 베리디쿠스 카드",     displayName: "거짓의 베리디쿠스 카드" },
-    { searchKeyword: "해방된 비올렌티아 카드",     displayName: "해방된 비올렌티아 카드" },
+    { searchKeyword: "마법 같은 행운 엘리브 카드",     displayName: "마법 같은 행운 엘리브 카드" },
+    { searchKeyword: "진실을 꿰뚫어 보는 자 카드",     displayName: "진실을 꿰뚫어 보는 자 카드" },
   ],
 };
 
